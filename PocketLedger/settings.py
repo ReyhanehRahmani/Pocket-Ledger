@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_yasg',
-    'app_transaction'
+    'app_transaction',
+    'app_email',
+    'app_account'
 ]
 
 MIDDLEWARE = [
@@ -92,7 +94,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+
+    "DEFAULT_THROTTLE_RATES": {
+        "otp_send": "5/hour",
+        "otp_verify": "10/hour",
+    }
     
 }
 
