@@ -25,6 +25,7 @@ urlpatterns = [
     path('show/<int:pk>/', ShowTransaction.as_view(), name='show_transaction'),
     path('update/<int:pk>/', UpdateTransaction.as_view(), name='update_transaction'),
     path('delete/<int:pk>/', DeleteTransaction.as_view(), name='delete_transaction'),
+    path('all-transactions/', TransactionListView.as_view(), name='transaction-list'),
 
     #report
     path('report/', TransactionReportView.as_view(), name='transaction_report'),

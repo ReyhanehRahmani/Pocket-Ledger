@@ -63,6 +63,16 @@ class DeleteTransaction(DestroyAPIView):
             status=status.HTTP_204_NO_CONTENT)
     
 
+class TransactionListView(ListAPIView):
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        return Transaction.objects.filter(user=self.request.user)
+
+
 class TransactionReportView(ListAPIView):
 
     authentication_classes = [JWTAuthentication]
