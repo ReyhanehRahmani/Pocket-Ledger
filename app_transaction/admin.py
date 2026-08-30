@@ -38,7 +38,7 @@ class CardAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['title', 'user', 'type', 'amount', 'date', 'category', 'card']
+    list_display = ['title', 'user', 'type', 'amount', 'date', 'category', 'card' , 'id']
     list_filter = ['type', 'date', 'category', 'card', 'user']
     search_fields = ['title', 'description', 'user__username']
     date_hierarchy = 'date'
