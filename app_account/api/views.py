@@ -11,7 +11,7 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from app_account.models import EmailOTP
-from app_account.serializers import EmailSerializer, UserRegistrationSerializer
+from app_account.api.serializers import EmailSerializer, UserRegistrationSerializer
 from app_email.utils import send_simple_email
 
 MAX_OTP_ATTEMPTS = 5
