@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 from django.urls import re_path
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
+from django.views.generic import TemplateView
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -50,5 +51,6 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('', TemplateView.as_view(template_name='index.html')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

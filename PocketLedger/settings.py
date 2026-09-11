@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'app_transaction',
+    'corsheaders',
     'app_email',
     'app_account'
 ]

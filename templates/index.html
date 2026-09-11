@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>دفترچه — Pocket Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171a;
+    --surface:#1b1f23;
+    --surface-2:#20242a;
+    --border:#2a2f35;
+    --text:#e9e7e2;
+    --text-muted:#8f969d;
+    --income:#8fae87;
+    --income-dim:#556a51;
+    --expense:#c07687;
+    --expense-dim:#6e4650;
+    --ring:#dcd8ce;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Vazirmatn', sans-serif;
+    font-feature-settings:'tnum' 1;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.6;
+  }
+  #app{min-height:100vh; display:flex; flex-direction:column;}
+  a{color:inherit;}
+  button{font-family:inherit; cursor:pointer;}
+  input, select, textarea{font-family:inherit;}
+
+  /* ===== utility ===== */
+  .muted{color:var(--text-muted); font-size:13px;}
+  .hidden{display:none !important;}
+  .stack{display:flex; flex-direction:column; gap:12px;}
+  .row{display:flex; gap:10px; align-items:center;}
+  .spread{display:flex; justify-content:space-between; align-items:center;}
+
+  /* ===== field ===== */
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:13px; color:var(--text-muted);}
+  .field input, .field select, .field textarea{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14.5px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    border-color:var(--ring);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .hint{font-size:12px; color:var(--text-muted);}
+
+  /* ===== buttons ===== */
+  .btn{
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    transition:border-color .15s, opacity .15s;
+  }
+  .btn:hover{border-color:var(--ring);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn-primary{
+    background:var(--ring);
+    color:#15181b;
+    border-color:var(--ring);
+    font-weight:600;
+  }
+  .btn-primary:hover{opacity:.9; border-color:var(--ring);}
+  .btn-ghost{background:transparent; border-color:transparent; color:var(--text-muted);}
+  .btn-ghost:hover{color:var(--text); border-color:var(--border);}
+  .btn-danger{color:var(--expense); border-color:var(--expense-dim); background:transparent;}
+  .btn-danger:hover{background:var(--expense-dim); color:var(--text);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:6px 10px; font-size:12.5px; border-radius:6px;}
+
+  /* ===== auth screen ===== */
+  .auth-wrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .auth-card{
+    width:100%;
+    max-width:380px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    border-radius:14px;
+    padding:28px 26px;
+  }
+  .brand{text-align:center; margin-bottom:22px;}
+  .brand .mark{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:40px; height:40px; border:1px solid var(--border);
+    border-radius:10px; margin-bottom:10px; font-size:18px;
+  }
+  .brand h1{font-size:17px; font-weight:600;}
+  .brand p{font-size:12.5px; color:var(--text-muted); margin-top:4px;}
+
+  .tabs{display:flex; border:1px solid var(--border); border-radius:9px; padding:3px; margin-bottom:20px;}
+  .tabs button{
+    flex:1; background:transparent; border:none; border-radius:6px;
+    padding:8px 0; font-size:13.5px; color:var(--text-muted);
+  }
+  .tabs button.active{background:var(--surface-2); color:var(--text); font-weight:600;}
+
+  .error-box{
+    background:rgba(192,118,135,.1);
+    border:1px solid var(--expense-dim);
+    color:var(--expense);
+    font-size:13px;
+    padding:9px 12px;
+    border-radius:8px;
+  }
+  .ok-box{
+    background:rgba(143,174,135,.1);
+    border:1px solid var(--income-dim);
+    color:var(--income);
+    font-size:13px;
+    padding:9px 12px;
+    border-radius:8px;
+  }
+  .step-dots{display:flex; gap:6px; justify-content:center; margin-bottom:18px;}
+  .step-dots span{width:6px; height:6px; border-radius:50%; background:var(--border);}
+  .step-dots span.active{background:var(--ring);}
+
+  /* ===== app shell ===== */
+  .topbar{
+    border-bottom:1px solid var(--border);
+    padding:14px 20px;
+    display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; background:var(--bg); z-index:5;
+  }
+  .topbar .brand-inline{display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px;}
+  .topbar .mark-sm{
+    width:26px; height:26px; border:1px solid var(--border); border-radius:7px;
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+  }
+  .main{max-width:640px; width:100%; margin:0 auto; padding:20px; flex:1;}
+
+  /* ===== summary ===== */
+  .summary{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px;
+    border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px;
+    background:var(--border);
+  }
+  .summary .cell{background:var(--surface); padding:16px 14px;}
+  .summary .cell .label{font-size:12px; color:var(--text-muted); margin-bottom:6px;}
+  .summary .cell .value{font-size:16px; font-weight:700; letter-spacing:.2px;}
+  .summary .income .value{color:var(--income);}
+  .summary .expense .value{color:var(--expense);}
+
+  /* ===== tabs nav ===== */
+  .nav{display:flex; gap:6px; border-bottom:1px solid var(--border); margin-bottom:18px;}
+  .nav button{
+    background:transparent; border:none; color:var(--text-muted);
+    padding:9px 4px; font-size:13.5px; position:relative; margin-left:14px;
+  }
+  .nav button.active{color:var(--text); font-weight:600;}
+  .nav button.active::after{
+    content:''; position:absolute; right:0; left:0; bottom:-1px; height:2px; background:var(--ring);
+  }
+
+  /* ===== ledger list ===== */
+  .ledger{border-top:1px solid var(--border);}
+  .tx-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:13px 2px; border-bottom:1px solid var(--border); gap:10px;
+  }
+  .tx-main{min-width:0;}
+  .tx-title{font-size:14.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .tx-meta{font-size:12px; color:var(--text-muted); margin-top:3px; display:flex; gap:6px; flex-wrap:wrap;}
+  .tx-side{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .tx-amount{font-size:14.5px; font-weight:700; white-space:nowrap;}
+  .tx-amount.income{color:var(--income);}
+  .tx-amount.expense{color:var(--expense);}
+  .tx-actions{display:flex; gap:4px;}
+  .icon-btn{
+    background:transparent; border:1px solid transparent; color:var(--text-muted);
+    width:26px; height:26px; border-radius:6px; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{border-color:var(--border); color:var(--text);}
+
+  .empty{
+    text-align:center; padding:50px 20px; color:var(--text-muted); font-size:13.5px;
+  }
+
+  .type-toggle{display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  .type-toggle button{
+    flex:1; background:var(--surface-2); border:none; color:var(--text-muted);
+    padding:10px 0; font-size:13.5px; font-weight:500;
+  }
+  .type-toggle button.on.income{background:rgba(143,174,135,.15); color:var(--income);}
+  .type-toggle button.on.expense{background:rgba(192,118,135,.15); color:var(--expense);}
+
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .card-block{border:1px solid var(--border); border-radius:12px; padding:18px; background:var(--surface); margin-bottom:16px;}
+  .card-block h3{font-size:14px; font-weight:600; margin-bottom:14px;}
+
+  .period-fields{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;}
+
+  footer.credit{text-align:center; padding:24px; color:var(--text-muted); font-size:11.5px;}
+
+  @media(max-width:420px){
+    .summary{grid-template-columns:1fr 1fr;}
+    .summary .cell:last-child{grid-column:1 / -1;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   Pocket Ledger — Frontend (vanilla JS, no build step)
+   Change API_BASE to point at your Django backend.
+   ============================================================ */
+let API_BASE = localStorage.getItem('pl_api_base') || 'http://127.0.0.1:8000';
+
+const state = {
+  view: localStorage.getItem('pl_access') ? 'app' : 'auth',
+  authTab: 'login',
+  registerStep: 1,
+  regEmail: '',
+  regToken: '',
+  access: localStorage.getItem('pl_access') || null,
+  refresh: localStorage.getItem('pl_refresh') || null,
+  username: localStorage.getItem('pl_username') || '',
+  appTab: 'list',
+  transactions: [],
+  loadingTx: false,
+  error: '',
+  info: '',
+  editingId: null,
+  report: null,
+  reportPeriod: 'month',
+  reportError: '',
+};
+
+function setState(patch){ Object.assign(state, patch); render(); }
+
+/* ---------------- API helper ---------------- */
+async function api(path, { method = 'GET', body, auth = false, skipRefresh = false } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (auth && state.access) headers['Authorization'] = 'Bearer ' + state.access;
+
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 401 && auth && !skipRefresh && state.refresh) {
+    const refreshed = await tryRefresh();
+    if (refreshed) return api(path, { method, body, auth, skipRefresh: true });
+  }
+
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* no body */ }
+
+  if (!res.ok) {
+    const err = new Error(extractError(data));
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function extractError(data) {
+  if (!data) return 'خطای ناشناخته. اتصال به سرور را بررسی کنید.';
+  if (data.detail) return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+  const firstKey = Object.keys(data)[0];
+  if (firstKey) {
+    const val = data[firstKey];
+    return Array.isArray(val) ? val[0] : String(val);
+  }
+  return 'خطایی رخ داد.';
+}
+
+async function tryRefresh() {
+  try {
+    const data = await api('/api/token/refresh/', { method: 'POST', body: { refresh: state.refresh } });
+    state.access = data.access;
+    localStorage.setItem('pl_access', data.access);
+    return true;
+  } catch (e) {
+    logout();
+    return false;
+  }
+}
+
+/* ---------------- Auth actions ---------------- */
+async function doLogin(username, password) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/token/', { method: 'POST', body: { username, password } });
+    state.access = data.access;
+    state.refresh = data.refresh;
+    state.username = username;
+    localStorage.setItem('pl_access', data.access);
+    localStorage.setItem('pl_refresh', data.refresh);
+    localStorage.setItem('pl_username', username);
+    setState({ view: 'app' });
+    loadTransactions();
+  } catch (e) {
+    setState({ error: e.message || 'ورود ناموفق بود.' });
+  }
+}
+
+async function sendOtp(email) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/account/otp/send/', { method: 'POST', body: { email } });
+    setState({ regEmail: email, registerStep: 2, info: data.detail || 'کد تایید ارسال شد.' });
+  } catch (e) {
+    setState({ error: e.message });
+  }
+}
+
+async function verifyOtp(code) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.regEmail, otp_code: code } });
+    setState({ regToken: data.verification_token, registerStep: 3, info: '' });
+  } catch (e) {
+    setState({ error: e.message });
+  }
+}
+
+async function completeRegister(username, password) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/account/register/', {
+      method: 'POST',
+      body: { username, password, verification_token: state.regToken },
+    });
+    state.access = data.access;
+    state.refresh = data.refresh;
+    state.username = data.username;
+    localStorage.setItem('pl_access', data.access);
+    localStorage.setItem('pl_refresh', data.refresh);
+    localStorage.setItem('pl_username', data.username);
+    setState({ view: 'app', registerStep: 1, regEmail: '', regToken: '' });
+    loadTransactions();
+  } catch (e) {
+    setState({ error: e.message });
+  }
+}
+
+function logout() {
+  localStorage.removeItem('pl_access');
+  localStorage.removeItem('pl_refresh');
+  localStorage.removeItem('pl_username');
+  Object.assign(state, {
+    view: 'auth', access: null, refresh: null, username: '', transactions: [],
+    authTab: 'login', registerStep: 1, error: '', info: '', report: null,
+  });
+  render();
+}
+
+/* ---------------- Transactions ---------------- */
+async function loadTransactions() {
+  setState({ loadingTx: true, error: '' });
+  try {
+    const data = await api('/api/transaction/all-transactions/', { auth: true });
+    setState({ transactions: data, loadingTx: false });
+  } catch (e) {
+    setState({ loadingTx: false, error: e.message });
+  }
+}
+
+async function saveTransaction(payload, id) {
+  setState({ error: '' });
+  try {
+    if (id) {
+      await api(`/api/transaction/update/${id}/`, { method: 'PATCH', body: payload, auth: true });
+    } else {
+      await api('/api/transaction/create/', { method: 'POST', body: payload, auth: true });
+    }
+    setState({ editingId: null, appTab: 'list' });
+    loadTransactions();
+  } catch (e) {
+    setState({ error: e.message });
+  }
+}
+
+async function deleteTransaction(id) {
+  if (!confirm('این تراکنش حذف شود؟')) return;
+  try {
+    await api(`/api/transaction/delete/${id}/`, { method: 'DELETE', auth: true });
+    loadTransactions();
+  } catch (e) {
+    setState({ error: e.message });
+  }
+}
+
+async function runReport(params) {
+  setState({ reportError: '', report: null });
+  const qs = new URLSearchParams(params).toString();
+  try {
+    const data = await api('/api/transaction/report/?' + qs, { auth: true });
+    setState({ report: data });
+  } catch (e) {
+    setState({ reportError: e.message });
+  }
+}
+
+/* ---------------- helpers ---------------- */
+function fmtAmount(n) {
+  return Number(n).toLocaleString('fa-IR') + ' تومان';
+}
+function totals() {
+  let income = 0, expense = 0;
+  for (const t of state.transactions) {
+    if (t.type === 'income') income += Number(t.amount);
+    else expense += Number(t.amount);
+  }
+  return { income, expense, balance: income - expense };
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render() {
+  const root = document.getElementById('app');
+  root.innerHTML = state.view === 'auth' ? renderAuth() : renderApp();
+  bindEvents(root);
+}
+
+function renderAuth() {
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="mark">📒</div>
+        <h1>دفترچه</h1>
+        <p>Pocket Ledger — مدیریت ساده دخل و خرج</p>
+      </div>
+
+      <div class="tabs">
+        <button data-act="auth-tab" data-tab="login" class="${state.authTab==='login'?'active':''}">ورود</button>
+        <button data-act="auth-tab" data-tab="register" class="${state.authTab==='register'?'active':''}">ثبت‌نام</button>
+      </div>
+
+      ${state.error ? `<div class="error-box" style="margin-bottom:14px;">${escapeHtml(state.error)}</div>` : ''}
+      ${state.info ? `<div class="ok-box" style="margin-bottom:14px;">${escapeHtml(state.info)}</div>` : ''}
+
+      ${state.authTab === 'login' ? renderLoginForm() : renderRegisterForm()}
+
+      <div class="hint" style="margin-top:18px; text-align:center;">
+        آدرس سرور:
+        <a href="#" data-act="edit-api-base" style="text-decoration:underline;">${escapeHtml(API_BASE)}</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderLoginForm() {
+  return `
+  <form data-act="login-form" class="stack">
+    <div class="field">
+      <label>نام کاربری</label>
+      <input name="username" required autocomplete="username" />
+    </div>
+    <div class="field">
+      <label>رمز عبور</label>
+      <input name="password" type="password" required autocomplete="current-password" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">ورود</button>
+  </form>`;
+}
+
+function renderRegisterForm() {
+  const dots = [1,2,3].map(n => `<span class="${state.registerStep===n?'active':''}"></span>`).join('');
+  if (state.registerStep === 1) {
+    return `
+    <div class="step-dots">${dots}</div>
+    <form data-act="otp-send-form" class="stack">
+      <div class="field">
+        <label>ایمیل</label>
+        <input name="email" type="email" required autocomplete="email" placeholder="you@example.com" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">ارسال کد تایید</button>
+    </form>`;
+  }
+  if (state.registerStep === 2) {
+    return `
+    <div class="step-dots">${dots}</div>
+    <p class="muted" style="margin-bottom:14px;">کد ۶ رقمی ارسال‌شده به ${escapeHtml(state.regEmail)} را وارد کنید.</p>
+    <form data-act="otp-verify-form" class="stack">
+      <div class="field">
+        <label>کد تایید</label>
+        <input name="otp_code" required maxlength="6" inputmode="numeric" placeholder="――――――" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">تایید کد</button>
+      <button type="button" data-act="back-to-email" class="btn btn-ghost btn-block">تغییر ایمیل</button>
+    </form>`;
+  }
+  return `
+  <div class="step-dots">${dots}</div>
+  <form data-act="register-form" class="stack">
+    <div class="field">
+      <label>نام کاربری</label>
+      <input name="username" required />
+    </div>
+    <div class="field">
+      <label>رمز عبور</label>
+      <input name="password" type="password" required minlength="8" />
+      <span class="hint">حداقل ۸ کاراکتر</span>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">ساخت حساب</button>
+  </form>`;
+}
+
+function renderApp() {
+  const t = totals();
+  return `
+  <div class="topbar">
+    <div class="brand-inline"><span class="mark-sm">📒</span> دفترچه</div>
+    <div class="row">
+      <span class="muted">${escapeHtml(state.username)}</span>
+      <button class="btn btn-ghost btn-sm" data-act="logout">خروج</button>
+    </div>
+  </div>
+
+  <div class="main">
+    ${state.error ? `<div class="error-box" style="margin-bottom:16px;">${escapeHtml(state.error)}</div>` : ''}
+
+    <div class="summary">
+      <div class="cell income"><div class="label">درآمد</div><div class="value">${fmtAmount(t.income)}</div></div>
+      <div class="cell expense"><div class="label">هزینه</div><div class="value">${fmtAmount(t.expense)}</div></div>
+      <div class="cell"><div class="label">مانده</div><div class="value">${fmtAmount(t.balance)}</div></div>
+    </div>
+
+    <div class="nav">
+      <button data-act="app-tab" data-tab="list" class="${state.appTab==='list'?'active':''}">تراکنش‌ها</button>
+      <button data-act="app-tab" data-tab="form" class="${state.appTab==='form'?'active':''}">${state.editingId ? 'ویرایش' : 'افزودن'}</button>
+      <button data-act="app-tab" data-tab="report" class="${state.appTab==='report'?'active':''}">گزارش</button>
+    </div>
+
+    ${state.appTab === 'list' ? renderList() : ''}
+    ${state.appTab === 'form' ? renderForm() : ''}
+    ${state.appTab === 'report' ? renderReport() : ''}
+  </div>
+
+  <footer class="credit">Pocket Ledger · متصل به ${escapeHtml(API_BASE)}</footer>
+  `;
+}
+
+function renderList() {
+  if (state.loadingTx) return `<div class="empty">در حال بارگذاری…</div>`;
+  if (!state.transactions.length) {
+    return `<div class="empty">هنوز تراکنشی ثبت نشده.<br><br>
+      <button class="btn btn-primary" data-act="app-tab" data-tab="form">افزودن تراکنش اول</button>
+    </div>`;
+  }
+  const rows = state.transactions.map(tx => `
+    <div class="tx-row">
+      <div class="tx-main">
+        <div class="tx-title">${escapeHtml(tx.title)}</div>
+        <div class="tx-meta">
+          <span>${escapeHtml(tx.date)}</span>
+          ${tx.category_title ? `<span>· ${escapeHtml(tx.category_title)}</span>` : ''}
+          ${tx.bank_name ? `<span>· ${escapeHtml(tx.bank_name)} ${escapeHtml(tx.card_number || '')}</span>` : ''}
+        </div>
+      </div>
+      <div class="tx-side">
+        <div class="tx-amount ${tx.type}">${tx.type === 'income' ? '+' : '−'} ${fmtAmount(tx.amount)}</div>
+        <div class="tx-actions">
+          <button class="icon-btn" title="ویرایش" data-act="edit-tx" data-id="${tx.id}">✎</button>
+          <button class="icon-btn" title="حذف" data-act="delete-tx" data-id="${tx.id}">✕</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  return `<div class="ledger">${rows}</div>`;
+}
+
+function renderForm() {
+  const editing = state.editingId ? state.transactions.find(t => t.id === state.editingId) : null;
+  const type = editing ? editing.type : 'expense';
+  return `
+  <form data-act="tx-form" class="card-block stack">
+    <h3>${editing ? 'ویرایش تراکنش' : 'تراکنش جدید'}</h3>
+
+    <div class="type-toggle" data-role="type-toggle">
+      <button type="button" data-type="expense" class="${type==='expense'?'on expense':''}">هزینه</button>
+      <button type="button" data-type="income" class="${type==='income'?'on income':''}">درآمد</button>
+    </div>
+    <input type="hidden" name="type" value="${type}" data-role="type-input" />
+
+    <div class="field">
+      <label>عنوان</label>
+      <input name="title" required value="${editing ? escapeHtml(editing.title) : ''}" placeholder="مثلاً خرید هفتگی" />
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>مبلغ (تومان)</label>
+        <input name="amount" type="number" min="0" required value="${editing ? editing.amount : ''}" />
+      </div>
+      <div class="field">
+        <label>تاریخ</label>
+        <input name="date" type="date" required value="${editing ? editing.date : new Date().toISOString().slice(0,10)}" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>توضیحات (اختیاری)</label>
+      <textarea name="description">${editing && editing.description ? escapeHtml(editing.description) : ''}</textarea>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>شناسه دسته‌بندی (اختیاری)</label>
+        <input name="category" type="number" value="${editing && editing.category ? editing.category : ''}" />
+      </div>
+      <div class="field">
+        <label>شناسه کارت (اختیاری)</label>
+        <input name="card" type="number" value="${editing && editing.card ? editing.card : ''}" />
+      </div>
+    </div>
+    <p class="hint">دسته‌بندی و کارت فعلاً فقط از پنل ادمین جنگو ساخته می‌شوند؛ اینجا فقط شناسه عددی‌شان وارد می‌شود.</p>
+
+    <div class="row">
+      <button type="submit" class="btn btn-primary" style="flex:1;">${editing ? 'ذخیره تغییرات' : 'ثبت تراکنش'}</button>
+      ${editing ? `<button type="button" class="btn btn-ghost" data-act="cancel-edit">انصراف</button>` : ''}
+    </div>
+  </form>`;
+}
+
+function renderReport() {
+  const period = state.reportPeriod;
+  let extra = '';
+  if (period === 'day') {
+    extra = `<div class="period-fields">
+      <div class="field"><label>سال شمسی</label><input name="year" type="number" required /></div>
+      <div class="field"><label>ماه</label><input name="month" type="number" min="1" max="12" required /></div>
+      <div class="field"><label>روز</label><input name="day" type="number" min="1" max="31" required /></div>
+    </div>`;
+  } else if (period === 'month') {
+    extra = `<div class="period-fields">
+      <div class="field"><label>سال شمسی</label><input name="year" type="number" required /></div>
+      <div class="field"><label>ماه</label><input name="month" type="number" min="1" max="12" required /></div>
+    </div>`;
+  } else if (period === 'year') {
+    extra = `<div class="period-fields" style="grid-template-columns:1fr;">
+      <div class="field"><label>سال شمسی</label><input name="year" type="number" required /></div>
+    </div>`;
+  } else if (period === 'week') {
+    extra = `<div class="period-fields">
+      <div class="field"><label>سال شمسی</label><input name="year" type="number" required /></div>
+      <div class="field"><label>ماه</label><input name="month" type="number" min="1" max="12" required /></div>
+      <div class="field"><label>شماره هفته</label><input name="week_number" type="number" min="1" required /></div>
+    </div>`;
+  } else if (period === 'custom') {
+    extra = `<div class="period-fields">
+      <div class="field"><label>از تاریخ (شمسی)</label><input name="start_date" placeholder="1404-01-01" required /></div>
+      <div class="field"><label>تا تاریخ (شمسی)</label><input name="end_date" placeholder="1404-01-30" required /></div>
+    </div>`;
+  }
+
+  let resultHtml = '';
+  if (state.reportError) {
+    resultHtml = `<div class="error-box" style="margin-top:16px;">${escapeHtml(state.reportError)}</div>`;
+  } else if (state.report) {
+    const r = state.report;
+    resultHtml = `
+    <div class="summary" style="margin-top:18px;">
+      <div class="cell income"><div class="label">درآمد</div><div class="value">${fmtAmount(r.income_total)}</div></div>
+      <div class="cell expense"><div class="label">هزینه</div><div class="value">${fmtAmount(r.expense_total)}</div></div>
+      <div class="cell"><div class="label">مانده</div><div class="value">${fmtAmount(r.balance)}</div></div>
+    </div>
+    <p class="muted" style="margin-top:10px;">بازه: ${escapeHtml(r.start_date)} تا ${escapeHtml(r.end_date)}</p>
+    ${r.category_totals && r.category_totals.length ? `
+      <div class="card-block" style="margin-top:14px;">
+        <h3>بر اساس دسته‌بندی</h3>
+        <div class="stack">
+          ${r.category_totals.map(c => `
+            <div class="spread">
+              <span class="muted">${escapeHtml(c.category__title || 'بدون دسته')}</span>
+              <span>${fmtAmount(c.total)}</span>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+    `;
+  }
+
+  return `
+  <div class="card-block">
+    <h3>گزارش دوره‌ای</h3>
+    <form data-act="report-form" class="stack">
+      <div class="field">
+        <label>بازه</label>
+        <select name="period" data-role="period-select">
+          <option value="day" ${period==='day'?'selected':''}>روز</option>
+          <option value="week" ${period==='week'?'selected':''}>هفته</option>
+          <option value="month" ${period==='month'?'selected':''}>ماه</option>
+          <option value="year" ${period==='year'?'selected':''}>سال</option>
+          <option value="custom" ${period==='custom'?'selected':''}>سفارشی</option>
+        </select>
+      </div>
+      <div data-role="period-extra">${extra}</div>
+      <button type="submit" class="btn btn-primary btn-block">دریافت گزارش</button>
+    </form>
+  </div>
+  ${resultHtml}
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ============================================================
+   EVENTS (delegated)
+   ============================================================ */
+function bindEvents(root) {
+  root.querySelectorAll('[data-act="auth-tab"]').forEach(el =>
+    el.addEventListener('click', () => setState({ authTab: el.dataset.tab, error:'', info:'', registerStep:1 })));
+
+  root.querySelectorAll('[data-act="app-tab"]').forEach(el =>
+    el.addEventListener('click', () => setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'' })));
+
+  const logoutBtn = root.querySelector('[data-act="logout"]');
+  if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+  const editBase = root.querySelector('[data-act="edit-api-base"]');
+  if (editBase) editBase.addEventListener('click', (e) => {
+    e.preventDefault();
+    const val = prompt('آدرس سرور بک‌اند را وارد کنید:', API_BASE);
+    if (val) { API_BASE = val.replace(/\/$/, ''); localStorage.setItem('pl_api_base', API_BASE); render(); }
+  });
+
+  const loginForm = root.querySelector('[data-act="login-form"]');
+  if (loginForm) loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(loginForm);
+    doLogin(f.get('username'), f.get('password'));
+  });
+
+  const otpSendForm = root.querySelector('[data-act="otp-send-form"]');
+  if (otpSendForm) otpSendForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendOtp(new FormData(otpSendForm).get('email'));
+  });
+
+  const otpVerifyForm = root.querySelector('[data-act="otp-verify-form"]');
+  if (otpVerifyForm) otpVerifyForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    verifyOtp(new FormData(otpVerifyForm).get('otp_code'));
+  });
+
+  const backToEmail = root.querySelector('[data-act="back-to-email"]');
+  if (backToEmail) backToEmail.addEventListener('click', () => setState({ registerStep: 1, error:'', info:'' }));
+
+  const registerForm = root.querySelector('[data-act="register-form"]');
+  if (registerForm) registerForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(registerForm);
+    completeRegister(f.get('username'), f.get('password'));
+  });
+
+  root.querySelectorAll('[data-act="edit-tx"]').forEach(el =>
+    el.addEventListener('click', () => setState({ editingId: Number(el.dataset.id), appTab: 'form' })));
+
+  root.querySelectorAll('[data-act="delete-tx"]').forEach(el =>
+    el.addEventListener('click', () => deleteTransaction(Number(el.dataset.id))));
+
+  const cancelEdit = root.querySelector('[data-act="cancel-edit"]');
+  if (cancelEdit) cancelEdit.addEventListener('click', () => setState({ editingId: null }));
+
+  const typeToggle = root.querySelector('[data-role="type-toggle"]');
+  if (typeToggle) typeToggle.querySelectorAll('button').forEach(btn =>
+    btn.addEventListener('click', () => {
+      root.querySelector('[data-role="type-input"]').value = btn.dataset.type;
+      typeToggle.querySelectorAll('button').forEach(b => b.classList.remove('on','income','expense'));
+      btn.classList.add('on', btn.dataset.type);
+    }));
+
+  const txForm = root.querySelector('[data-act="tx-form"]');
+  if (txForm) txForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(txForm);
+    const payload = {
+      title: f.get('title'),
+      description: f.get('description') || '',
+      type: f.get('type'),
+      amount: Number(f.get('amount')),
+      date: f.get('date'),
+      category: f.get('category') ? Number(f.get('category')) : null,
+      card: f.get('card') ? Number(f.get('card')) : null,
+    };
+    saveTransaction(payload, state.editingId);
+  });
+
+  const periodSelect = root.querySelector('[data-role="period-select"]');
+  if (periodSelect) periodSelect.addEventListener('change', () => setState({ reportPeriod: periodSelect.value, report: null, reportError: '' }));
+
+  const reportForm = root.querySelector('[data-act="report-form"]');
+  if (reportForm) reportForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(reportForm);
+    const params = { period: f.get('period') };
+    for (const key of ['year','month','day','week_number','start_date','end_date']) {
+      const v = f.get(key);
+      if (v) params[key] = v;
+    }
+    runReport(params);
+  });
+}
+
+/* ---------------- init ---------------- */
+render();
+if (state.view === 'app') loadTransactions();
+</script>
+</body>
+</html>
