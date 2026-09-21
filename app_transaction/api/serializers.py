@@ -3,7 +3,18 @@ from app_transaction.models import Transaction
 import jdatetime
 from rest_framework import serializers
 from app_transaction.api import utils
+from app_transaction.models import Transaction, Category, Card
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'title']
+
+
+class CardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Card
+        fields = ['id', 'bank_name', 'card_number']
 
 class TransactionSerializer(serializers.ModelSerializer):
 
