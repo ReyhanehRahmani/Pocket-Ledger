@@ -20,7 +20,7 @@ class EmailOTP(models.Model):
         return f"{self.email} - {self.otp_code}"
 
     def is_expired(self):
-        expiration_time = self.created_at + timedelta(minutes=2)
+        expiration_time = self.created_at + timedelta(minutes=1)
         return timezone.now() > expiration_time
 
     @classmethod
