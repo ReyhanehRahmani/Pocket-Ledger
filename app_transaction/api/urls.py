@@ -27,6 +27,10 @@ urlpatterns = [
     path('delete/<int:pk>/', DeleteTransaction.as_view(), name='delete_transaction'),
     path('all-transactions/', TransactionListView.as_view(), name='transaction-list'),
 
+    #category & card
+    path('categories/', CategoryListCreateView.as_view(), name='category-list-create'),
+    path('cards/', CardListCreateView.as_view(), name='card-list-create'),
+
     #report
     path('report/', TransactionReportView.as_view(), name='transaction_report'),
 ]

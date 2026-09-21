@@ -6,12 +6,35 @@ from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView , UpdateAPIView , DestroyAPIView
 import random
 from app_transaction.models import *
 from app_transaction.api.serializers import *
 from django.db.models import Sum
 from rest_framework.generics import ListAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView, ListCreateAPIView
+
+class CategoryListCreateView(ListCreateAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = CategorySerializer
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user).order_by('title')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CardListCreateView(ListCreateAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = CardSerializer
+
+    def get_queryset(self):
+        return Card.objects.filter(user=self.request.user).order_by('bank_name')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class CreateTransaction(CreateAPIView) :
