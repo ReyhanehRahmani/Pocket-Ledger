@@ -9,11 +9,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from app_email.utils import send_templated_email
 from app_account.models import EmailOTP
 from app_account.api.serializers import EmailSerializer, UserRegistrationSerializer
-from app_email.utils import send_simple_email
-
 MAX_OTP_ATTEMPTS = 5
 TOKEN_TTL_MINUTES = 5
 
@@ -63,6 +61,9 @@ class SendEmailOTPView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
 
+        if User.objects.filter(email=email).exists():
+            return Response({"detail": "کاربری با این ایمیل قبلاً ثبت‌نام کرده است. وارد شوید."}, status=400)
+
         existing = EmailOTP.objects.filter(email=email).first()
 
         if existing and existing.is_verified:
@@ -78,9 +79,10 @@ class SendEmailOTPView(APIView):
 
         otp_instance = EmailOTP.create_otp(email)
 
-        if not send_simple_email(
+        if not send_templated_email(
             subject="کد تایید ورود",
-            message=f"کد تایید شما: {otp_instance.otp_code}\nاین کد تا ۲ دقیقه دیگر معتبر است.",
+            template_name="otp.html",
+            context={"otp_code": otp_instance.otp_code},
             recipient_list=[email],
         ):
             return Response({"detail": "ارسال ایمیل با خطا مواجه شد."}, status=500)
