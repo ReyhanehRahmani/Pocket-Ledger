@@ -64,7 +64,7 @@ ROOT_URLCONF = 'PocketLedger.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -179,3 +179,4 @@ DEFAULT_FROM_EMAIL = 'imreybyrey@gmail.com'  # همون ایمیل Gmail خود�
 
 # ایمیل مدیر برای دریافت گزارشات (اختیاری)
 ADMIN_EMAIL = 'imreybyrey@gmail.com'
+

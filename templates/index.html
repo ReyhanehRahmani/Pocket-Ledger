@@ -348,6 +348,7 @@ const state = {
   error: '',
   info: '',
   editingId: null,
+  draftTx: null,
   showAddCategory: false,
   showAddCard: false,
   report: null,
@@ -504,6 +505,7 @@ async function saveTransaction(payload, id) {
   try {
     if (id) await api(`/api/transaction/update/${id}/`, { method: 'PATCH', body: payload, auth: true });
     else await api('/api/transaction/create/', { method: 'POST', body: payload, auth: true });
+    state.draftTx = null;
     setState({ editingId: null, appTab: 'list' });
     loadTransactions();
   } catch (e) { setState({ error: e.message }); }
@@ -704,10 +706,36 @@ function renderCardOptions(selectedId) {
     state.cards.map(c => `<option value="${c.id}" ${selectedId==c.id?'selected':''}>${escapeHtml(c.bank_name)} — ${escapeHtml(c.card_number)}</option>`).join('');
 }
 
+/** snapshot the tx-form's current values into state.draftTx, so a re-render
+    (e.g. triggered by creating a category/card inline) doesn't wipe what the user typed */
+function captureDraft(root) {
+  if (state.editingId) return; // editing an existing tx already keeps its own values, no draft needed
+  const form = root.querySelector('[data-act="tx-form"]');
+  if (!form) return;
+  const f = new FormData(form);
+  state.draftTx = {
+    title: f.get('title') || '',
+    description: f.get('description') || '',
+    type: f.get('type') || 'expense',
+    amount: f.get('amount') || '',
+    date_y: f.get('date_y'), date_m: f.get('date_m'), date_d: f.get('date_d'),
+    category: f.get('category') || '',
+    card: f.get('card') || '',
+  };
+}
+
 function renderForm() {
   const editing = state.editingId ? state.transactions.find(t => t.id === state.editingId) : null;
-  const type = editing ? editing.type : 'expense';
-  const [jy, jm, jd] = editing ? gregStrToJalali(editing.date) : todayJalali();
+  const draft = !editing ? state.draftTx : null; // preserves in-progress input while adding a category/card inline
+  const type = editing ? editing.type : (draft ? draft.type : 'expense');
+  const [jy, jm, jd] = editing
+    ? gregStrToJalali(editing.date)
+    : (draft ? [Number(draft.date_y), Number(draft.date_m), Number(draft.date_d)] : todayJalali());
+  const vTitle = editing ? editing.title : (draft ? draft.title : '');
+  const vAmount = editing ? editing.amount : (draft ? draft.amount : '');
+  const vDescription = editing ? (editing.description || '') : (draft ? draft.description : '');
+  const vCategory = editing ? editing.category : (draft ? draft.category : '');
+  const vCard = editing ? editing.card : (draft ? draft.card : '');
 
   return `
   <form data-act="tx-form" class="card-block stack">
@@ -721,13 +749,13 @@ function renderForm() {
 
     <div class="field">
       <label>عنوان</label>
-      <input name="title" required value="${editing ? escapeHtml(editing.title) : ''}" placeholder="مثلاً خرید هفتگی" />
+      <input name="title" required value="${escapeHtml(vTitle)}" placeholder="مثلاً خرید هفتگی" />
     </div>
 
     <div class="grid-2">
       <div class="field">
         <label>مبلغ (تومان)</label>
-        <input name="amount" type="number" min="0" required value="${editing ? editing.amount : ''}" />
+        <input name="amount" type="number" min="0" required value="${vAmount}" />
       </div>
       <div class="field">
         <label>تاریخ (شمسی)</label>
@@ -737,13 +765,13 @@ function renderForm() {
 
     <div class="field">
       <label>توضیحات (اختیاری)</label>
-      <textarea name="description">${editing && editing.description ? escapeHtml(editing.description) : ''}</textarea>
+      <textarea name="description">${escapeHtml(vDescription)}</textarea>
     </div>
 
     <div class="field">
       <label>دسته‌بندی (اختیاری)</label>
       <div class="select-row">
-        <select name="category">${renderCategoryOptions(editing ? editing.category : '')}</select>
+        <select name="category">${renderCategoryOptions(vCategory)}</select>
         <button type="button" class="btn btn-ghost btn-sm" data-act="toggle-add-category">${state.showAddCategory ? 'بستن' : '+ جدید'}</button>
       </div>
       ${state.showAddCategory ? `
@@ -758,7 +786,7 @@ function renderForm() {
     <div class="field">
       <label>کارت (اختیاری)</label>
       <div class="select-row">
-        <select name="card">${renderCardOptions(editing ? editing.card : '')}</select>
+        <select name="card">${renderCardOptions(vCard)}</select>
         <button type="button" class="btn btn-ghost btn-sm" data-act="toggle-add-card">${state.showAddCard ? 'بستن' : '+ جدید'}</button>
       </div>
       ${state.showAddCard ? `
@@ -952,7 +980,10 @@ function bindEvents(root) {
     el.addEventListener('click', () => setState({ authTab: el.dataset.tab, error:'', info:'', registerStep:1 })));
 
   root.querySelectorAll('[data-act="app-tab"]').forEach(el =>
-    el.addEventListener('click', () => setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false })));
+    el.addEventListener('click', () => {
+      state.draftTx = null; // intentional navigation away/into the form resets any in-progress draft
+      setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false });
+    }));
 
   const logoutBtn = root.querySelector('[data-act="logout"]');
   if (logoutBtn) logoutBtn.addEventListener('click', logout);
@@ -1000,7 +1031,7 @@ function bindEvents(root) {
     el.addEventListener('click', () => deleteTransaction(Number(el.dataset.id))));
 
   const cancelEdit = root.querySelector('[data-act="cancel-edit"]');
-  if (cancelEdit) cancelEdit.addEventListener('click', () => setState({ editingId: null }));
+  if (cancelEdit) cancelEdit.addEventListener('click', () => { state.draftTx = null; setState({ editingId: null }); });
 
   const typeToggle = root.querySelector('[data-role="type-toggle"]');
   if (typeToggle) typeToggle.querySelectorAll('button').forEach(btn =>
@@ -1011,18 +1042,28 @@ function bindEvents(root) {
     }));
 
   const toggleAddCategory = root.querySelector('[data-act="toggle-add-category"]');
-  if (toggleAddCategory) toggleAddCategory.addEventListener('click', () => setState({ showAddCategory: !state.showAddCategory }));
+  if (toggleAddCategory) toggleAddCategory.addEventListener('click', () => {
+    captureDraft(root);
+    setState({ showAddCategory: !state.showAddCategory });
+  });
 
   const toggleAddCard = root.querySelector('[data-act="toggle-add-card"]');
-  if (toggleAddCard) toggleAddCard.addEventListener('click', () => setState({ showAddCard: !state.showAddCard }));
+  if (toggleAddCard) toggleAddCard.addEventListener('click', () => {
+    captureDraft(root);
+    setState({ showAddCard: !state.showAddCard });
+  });
 
   const addCategoryBtn = root.querySelector('[data-act="add-category"]');
   if (addCategoryBtn) addCategoryBtn.addEventListener('click', async () => {
     const input = root.querySelector('[data-role="new-category-title"]');
     const title = input.value.trim();
     if (!title) return;
-    try { await createCategory(title); setState({ showAddCategory: false }); }
-    catch (e) { setState({ error: e.message }); }
+    captureDraft(root);
+    try {
+      const cat = await createCategory(title);
+      if (state.draftTx) state.draftTx.category = String(cat.id);
+      setState({ showAddCategory: false });
+    } catch (e) { setState({ error: e.message }); }
   });
 
   const addCardBtn = root.querySelector('[data-act="add-card"]');
@@ -1030,8 +1071,12 @@ function bindEvents(root) {
     const bank = root.querySelector('[data-role="new-card-bank"]').value.trim();
     const num = root.querySelector('[data-role="new-card-number"]').value.trim();
     if (!bank || !num) return;
-    try { await createCard(bank, num); setState({ showAddCard: false }); }
-    catch (e) { setState({ error: e.message }); }
+    captureDraft(root);
+    try {
+      const card = await createCard(bank, num);
+      if (state.draftTx) state.draftTx.card = String(card.id);
+      setState({ showAddCard: false });
+    } catch (e) { setState({ error: e.message }); }
   });
 
   const txForm = root.querySelector('[data-act="tx-form"]');
