@@ -3,45 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>کد تایید</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
+  <title>کد تایید — دفترچه</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f4f4f7; font-family:Tahoma, Arial, sans-serif;">
+<body style="margin:0; padding:0; background-color:#14171a; font-family:Tahoma, Arial, sans-serif;">
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:32px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#14171a; padding:32px 0;">
     <tr>
       <td align="center">
 
         <table role="presentation" width="480" cellpadding="0" cellspacing="0"
-               style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+               style="background-color:#1b1f23; border:1px solid #2a2f35; border-radius:14px; overflow:hidden; max-width:480px;">
 
           <!-- هدر -->
           <tr>
-            <td style="background-color:#4f46e5; padding:24px 32px; text-align:center;">
-              <span style="color:#ffffff; font-size:20px; font-weight:bold;">کد تایید ورود</span>
+            <td style="padding:26px 32px 22px; text-align:center; border-bottom:1px solid #2a2f35;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 10px;">
+                <tr>
+                  <td style="width:40px; height:40px; border:1px solid #2a2f35; border-radius:10px; text-align:center; vertical-align:middle; font-size:18px;">
+                    📒
+                  </td>
+                </tr>
+              </table>
+              <span style="color:#e9e7e2; font-size:16px; font-weight:bold;">دفترچه</span>
+              <div style="color:#8f969d; font-size:12px; margin-top:4px;">Pocket Ledger</div>
             </td>
           </tr>
 
           <!-- بدنه -->
           <tr>
             <td style="padding:32px; text-align:center;">
-              <p style="margin:0 0 16px; font-size:15px; color:#333333; line-height:1.8;">
+              <p style="margin:0 0 20px; font-size:14.5px; color:#e9e7e2; line-height:1.9;">
                 سلام،<br />
                 برای تکمیل فرآیند ورود یا ثبت‌نام، کد زیر را در برنامه وارد کنید:
               </p>
 
               <!-- کادر کد OTP -->
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
-                  <td style="background-color:#f0f0fb; border:1px solid #dcdcf5; border-radius:8px; padding:16px 32px;">
-                    <span style="font-size:32px; font-weight:bold; letter-spacing:8px; color:#4f46e5; direction:ltr; display:inline-block;">
+                  <td style="background-color:#20242a; border:1px solid #2a2f35; border-radius:10px; padding:18px 36px;">
+                    <span style="font-size:32px; font-weight:bold; letter-spacing:10px; color:#dcd8ce; direction:ltr; display:inline-block; font-family:Tahoma, Arial, sans-serif;">
                       {{ otp_code }}
                     </span>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:16px 0 0; font-size:13px; color:#888888; line-height:1.8;">
-                این کد تا <strong>۲ دقیقه</strong> دیگر معتبر است.<br />
+              <p style="margin:22px 0 0; font-size:12.5px; color:#8f969d; line-height:1.9;">
+                این کد تا <span style="color:#e9e7e2; font-weight:bold;">۲ دقیقه</span> دیگر معتبر است.<br />
                 اگر این درخواست از سمت شما نبوده، این ایمیل را نادیده بگیرید.
               </p>
             </td>
@@ -50,14 +60,14 @@
           <!-- خط جداکننده -->
           <tr>
             <td style="padding:0 32px;">
-              <hr style="border:none; border-top:1px solid #eeeeee; margin:0;" />
+              <hr style="border:none; border-top:1px solid #2a2f35; margin:0;" />
             </td>
           </tr>
 
           <!-- فوتر -->
           <tr>
-            <td style="padding:20px 32px; text-align:center;">
-              <p style="margin:0; font-size:12px; color:#aaaaaa;">
+            <td style="padding:18px 32px 22px; text-align:center;">
+              <p style="margin:0; font-size:11.5px; color:#8f969d;">
                 این ایمیل به‌صورت خودکار ارسال شده است، لطفاً به آن پاسخ ندهید.
               </p>
             </td>
