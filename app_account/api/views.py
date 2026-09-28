@@ -10,8 +10,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from app_email.utils import send_templated_email
-from app_account.models import EmailOTP
-from app_account.api.serializers import EmailSerializer, UserRegistrationSerializer
+from rest_framework.permissions import IsAuthenticated
+from app_account.models import EmailOTP, Profile
+from app_account.api.serializers import EmailSerializer, UserRegistrationSerializer, ProfileSerializer
 MAX_OTP_ATTEMPTS = 15
 TOKEN_TTL_MINUTES = 5
 
@@ -194,3 +195,19 @@ class ResetPasswordView(APIView):
         EmailOTP.objects.filter(email=email).delete()
 
         return Response({"detail": "رمز عبور با موفقیت تغییر کرد."}, status=200)
+    
+
+class MyProfileView(APIView):
+    """خواندن و تغییر پروفایل کاربر لاگین‌شده"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)  # برای کاربرهای قدیمی که ردیف ندارند
+        return Response(ProfileSerializer(profile).data)
+
+    def patch(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

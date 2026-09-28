@@ -35,3 +35,14 @@ class EmailOTP(models.Model):
         return cls.objects.create(
             email=email,
             otp_code=otp_code)
+    
+
+class Profile(models.Model):
+
+    AVATAR_CHOICES = [(i, f"avatar {i}") for i in range(1, 5)]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    avatar = models.PositiveSmallIntegerField(choices=AVATAR_CHOICES, default=1)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.avatar}"

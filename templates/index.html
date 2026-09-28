@@ -97,6 +97,51 @@
   .btn-sm{padding:6px 10px; font-size:12.5px; border-radius:6px;}
   .btn-xs{padding:4px 9px; font-size:11.5px; border-radius:6px;}
   .spinner{display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; margin-inline-end:8px;}
+  .avatar-btn{width:34px; height:34px; padding:0; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); overflow:hidden;}
+  .avatar-btn img, .avatar-opt img{width:100%; height:100%; object-fit:cover; display:block;}
+  .avatar-picker{position:absolute; top:100%; inset-inline-end:16px; margin-top:6px; display:flex; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; z-index:10;}
+  .avatar-opt{width:52px; height:52px; padding:0; border-radius:50%; border:2px solid transparent; background:none; overflow:hidden;}
+  .avatar-opt:hover{border-color:var(--text-muted);}
+  .avatar-opt.active{border-color:var(--ring);}
+
+  /* ===== header user chip ===== */
+  .user-chip{display:flex; align-items:center; gap:9px; padding:3px 4px 3px 14px; border:1px solid var(--border); border-radius:999px; background:var(--surface); color:var(--text); font-size:13px; font-weight:500; transition:border-color .15s, background .15s;}
+  .user-chip:hover, .user-chip.active{border-color:var(--ring); background:var(--surface-2);}
+  .chip-avatar{width:30px; height:30px; border-radius:50%; padding:2px; border:1.5px solid var(--ring); background:var(--bg); flex:none;}
+  .chip-avatar img{width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;}
+  .chip-name{max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .logout-btn{background:transparent; border:1px solid transparent; color:var(--text-muted); font-size:12.5px; padding:6px 10px; border-radius:999px; transition:color .15s, border-color .15s;}
+  .logout-btn:hover{color:var(--expense); border-color:var(--expense-dim);}
+
+  /* ===== profile tab ===== */
+  .profile-card{position:relative; border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--surface); margin-bottom:16px;}
+  .profile-banner{height:96px; background:
+      radial-gradient(120% 140% at 15% 0%, rgba(143,174,135,.28) 0%, transparent 55%),
+      radial-gradient(120% 140% at 85% 10%, rgba(192,118,135,.24) 0%, transparent 55%),
+      linear-gradient(180deg, var(--surface-2), var(--surface));}
+  .profile-body{display:flex; flex-direction:column; align-items:center; text-align:center; padding:0 20px 22px; margin-top:-48px;}
+  .profile-avatar{width:96px; height:96px; border-radius:50%; padding:4px; background:var(--surface); border:2px solid var(--ring); box-shadow:0 0 0 6px rgba(220,216,206,.08), 0 8px 24px rgba(0,0,0,.35);}
+  .profile-avatar img{width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;}
+  .profile-name{font-size:20px; font-weight:700; margin-top:14px; letter-spacing:.2px;}
+
+  .profile-name{position:relative; display:inline-block;}
+  .name-edit{position:absolute; top:50%; inset-inline-end:100%; margin-inline-end:6px; transform:translateY(-50%); background:transparent; border:1px solid transparent; color:var(--text-muted); width:26px; height:26px; border-radius:50%; font-size:14px; line-height:1; transition:color .15s, border-color .15s;}
+  .name-edit:hover{color:var(--text); border-color:var(--border);}
+  .name-form{display:flex; gap:6px; align-items:center; margin-top:14px; flex-wrap:wrap; justify-content:center;}
+  .name-form input{background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:15px; font-family:inherit; text-align:center; outline:none; width:200px; max-width:100%;}
+  .name-form input:focus{border-color:var(--ring);}
+  .name-error{color:var(--expense); font-size:12.5px; margin-top:8px;}
+  .profile-email{display:inline-flex; align-items:center; gap:6px; margin-top:4px; font-size:13px; color:var(--text-muted); direction:ltr; unicode-bidi:plaintext;}
+  .profile-since{display:inline-flex; align-items:center; gap:5px; margin-top:12px; padding:3px 10px; font-size:11.5px; color:var(--text-muted); border:1px solid var(--border); border-radius:999px; background:var(--bg);}
+  .profile-stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); border-top:1px solid var(--border);}
+  .profile-stats .cell{background:var(--surface); padding:14px 8px; text-align:center;}
+  .profile-stats .num{font-size:17px; font-weight:700;}
+  .profile-stats .lbl{font-size:11.5px; color:var(--text-muted);}
+  .profile-avatars{border:1px solid var(--border); border-radius:14px; background:var(--surface); padding:16px;}
+  .profile-avatars h3{font-size:13.5px; font-weight:600; margin-bottom:12px;}
+  .profile-avatars .opts{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+  .profile-avatars .avatar-opt{width:60px; height:60px; transition:transform .15s, border-color .15s;}
+  .profile-avatars .avatar-opt:hover{transform:translateY(-2px);}
   @keyframes spin{to{transform:rotate(360deg);}}
   .chart-wrap{display:flex; align-items:center; gap:22px; flex-wrap:wrap; justify-content:center;}
   .donut{width:180px; height:180px; flex:none;}
@@ -369,6 +414,12 @@ const state = {
   refresh: localStorage.getItem('pl_refresh') || null,
   username: localStorage.getItem('pl_username') || '',
   appTab: 'list',
+  avatar: 1,
+  email: '',
+  joined: '',
+  editingName: false,
+  nameError: '',
+  showAvatarPicker: false,
   transactions: [],
   categories: [],
   cards: [],
@@ -394,6 +445,37 @@ function setState(patch) { Object.assign(state, patch); render(); }
 function setBtnLoading(btn, text) {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>' + text;
+}
+
+function avatarUrl(n) { return `${API_BASE}/static/avatars/${n}.png`; }
+
+async function loadProfile() {
+  try {
+    const data = await api('/api/account/profile/', { auth: true });
+    setState({ avatar: data.avatar, email: data.email || '', joined: data.date_joined || '', username: data.username || state.username });
+  } catch (e) { /* آواتار پیش‌فرض می‌ماند */ }
+}
+
+async function chooseAvatar(n) {
+  const prev = state.avatar;
+  setState({ avatar: n });          // اول نمایش می‌دهیم
+  try {
+    await api('/api/account/profile/', { method: 'PATCH', body: { avatar: n }, auth: true });
+  } catch (e) {
+    setState({ avatar: prev, error: e.message });             // اگر نشد، برمی‌گردانیم
+  }
+}
+
+async function saveUsername(name) {
+  name = name.trim();
+  if (name === state.username) { setState({ editingName: false, nameError: '' }); return; }
+  try {
+    const data = await api('/api/account/profile/', { method: 'PATCH', body: { username: name }, auth: true });
+    localStorage.setItem('pl_username', data.username);
+    setState({ username: data.username, editingName: false, nameError: '' });
+  } catch (e) {
+    setState({ nameError: e.message });
+  }
 }
 
 /* ---------------- API helper ---------------- */
@@ -526,7 +608,7 @@ function logout() {
   Object.assign(state, {
     view: 'auth', access: null, refresh: null, username: '', transactions: [],
     categories: [], cards: [], authTab: 'login', registerStep: 1, error: '', info: '', report: null,
-    forgotStep: 1, forgotEmail: '', forgotToken: '',
+    forgotStep: 1, forgotEmail: '', forgotToken: '', avatar: 1, email: '', joined: '', editingName: false, nameError: '', showAvatarPicker: false
   });
   render();
 }
@@ -552,6 +634,7 @@ function bootstrapApp() {
   loadTransactions();
   loadCategories();
   loadCards();
+  loadProfile();
 }
 
 async function createCategory(title) {
@@ -836,13 +919,64 @@ function renderRegisterForm() {
   </form>`;
 }
 
+function localDateStr(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function renderProfile() {
+  const since = state.joined ? displayJalali(localDateStr(state.joined)) : '';
+  return `
+  <div class="profile-card">
+    <div class="profile-banner"></div>
+    <div class="profile-body">
+      <div class="profile-avatar"><img src="${avatarUrl(state.avatar)}" alt="" /></div>
+      ${state.editingName ? `
+        <form class="name-form" data-act="name-form">
+          <input name="username" value="${escapeHtml(state.username)}" maxlength="150" autocomplete="off" required />
+          <button type="submit" class="btn btn-primary btn-sm">ذخیره</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="cancel-name">انصراف</button>
+        </form>
+        ${state.nameError ? `<div class="name-error">${escapeHtml(state.nameError)}</div>` : ''}
+      ` : `
+        <div class="profile-name">
+          <span>${escapeHtml(state.username)}</span>
+          <button class="name-edit" data-act="edit-name" title="تغییر نام کاربری">✎</button>
+        </div>`}
+      ${state.email ? `<div class="profile-email"><span>✉</span><span>${escapeHtml(state.email)}</span></div>` : ''}
+      ${since ? `<div class="profile-since">🗓 ثبت‌نام در ${since}</div>` : ''}
+    </div>
+    <div class="profile-stats">
+      <div class="cell"><div class="num">${faDigits(state.transactions.length)}</div><div class="lbl">تراکنش</div></div>
+      <div class="cell"><div class="num">${faDigits(state.categories.length)}</div><div class="lbl">دسته‌بندی</div></div>
+      <div class="cell"><div class="num">${faDigits(state.cards.length)}</div><div class="lbl">کارت</div></div>
+    </div>
+  </div>
+
+  <div class="profile-avatars">
+    <h3>عکس پروفایل</h3>
+    <div class="opts">
+      ${[1,2,3,4].map(n => `
+        <button class="avatar-opt ${state.avatar===n?'active':''}" data-act="pick-avatar" data-n="${n}">
+          <img src="${avatarUrl(n)}" alt="" />
+        </button>`).join('')}
+    </div>
+  </div>`;
+}
+
 function renderApp() {
   const t = monthTotals();
   const [, cjm] = todayJalali();
   return `
   <div class="topbar">
     <div class="brand-inline"><span class="mark-sm">📒</span> دفترچه</div>
-    <div class="row"><span class="muted">${escapeHtml(state.username)}</span><button class="btn btn-ghost btn-sm" data-act="logout">خروج</button></div>
+    <div class="row" style="gap:8px;">
+      <button class="user-chip ${state.appTab==='profile'?'active':''}" data-act="app-tab" data-tab="profile" title="پروفایل">
+        <span class="chip-avatar"><img src="${avatarUrl(state.avatar)}" alt="" /></span>
+        <span class="chip-name">${escapeHtml(state.username)}</span>
+      </button>
+      <button class="logout-btn" data-act="logout" title="خروج">خروج</button>
+    </div>
   </div>
 
   <div class="main">
@@ -860,12 +994,14 @@ function renderApp() {
       <button data-act="app-tab" data-tab="form" class="${state.appTab==='form'?'active':''}">${state.editingId ? 'ویرایش' : 'افزودن'}</button>
       <button data-act="app-tab" data-tab="report" class="${state.appTab==='report'?'active':''}">گزارش</button>
       <button data-act="app-tab" data-tab="manage" class="${state.appTab==='manage'?'active':''}">دسته‌بندی ها و کارت‌ها</button>
+      <button data-act="app-tab" data-tab="profile" class="${state.appTab==='profile'?'active':''}">پروفایل</button>
     </div>
 
     ${state.appTab === 'list' ? renderList() : ''}
     ${state.appTab === 'form' ? renderForm() : ''}
     ${state.appTab === 'report' ? renderReport() : ''}
     ${state.appTab === 'manage' ? renderManage() : ''}
+    ${state.appTab === 'profile' ? renderProfile() : ''}
   </div>
 
   <footer class="credit">Pocket Ledger · متصل به ${escapeHtml(API_BASE)}</footer>
@@ -1370,10 +1506,23 @@ function bindEvents(root) {
   root.querySelectorAll('[data-act="app-tab"]').forEach(el =>
     el.addEventListener('click', () => {
       state.draftTx = null; // intentional navigation away/into the form resets any in-progress draft
-      setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false, manageEditCat:null, manageEditCard:null, manageError:'', manageInfo:'' });
+      setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false, manageEditCat:null, manageEditCard:null, manageError:'', manageInfo:'', editingName:false, nameError:'' });
     }));
 
+  const editNameBtn = root.querySelector('[data-act="edit-name"]');
+  if (editNameBtn) editNameBtn.addEventListener('click', () => setState({ editingName: true, nameError: '' }));
+  const cancelNameBtn = root.querySelector('[data-act="cancel-name"]');
+  if (cancelNameBtn) cancelNameBtn.addEventListener('click', () => setState({ editingName: false, nameError: '' }));
+  const nameForm = root.querySelector('[data-act="name-form"]');
+  if (nameForm) {
+    const inp = nameForm.querySelector('input');
+    inp.focus(); inp.select();
+    nameForm.addEventListener('submit', (e) => { e.preventDefault(); saveUsername(inp.value); });
+  }
+
   const logoutBtn = root.querySelector('[data-act="logout"]');
+  root.querySelectorAll('[data-act="pick-avatar"]').forEach(el =>
+    el.addEventListener('click', () => chooseAvatar(Number(el.dataset.n))));
   if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
   const editBase = root.querySelector('[data-act="edit-api-base"]');

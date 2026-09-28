@@ -23,5 +23,6 @@ urlpatterns = [
     path("otp/verify/", VerifyOTPView.as_view(), name="verify-otp"),
     path("register/", UserRegistrationView.as_view(), name="user-register"),
     path("password/reset/", ResetPasswordView.as_view(), name="reset-password"),
+    path("profile/", MyProfileView.as_view(), name="my-profile"),
 ]
 
