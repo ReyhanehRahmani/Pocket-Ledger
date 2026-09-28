@@ -96,6 +96,8 @@
   .btn-block{width:100%;}
   .btn-sm{padding:6px 10px; font-size:12.5px; border-radius:6px;}
   .btn-xs{padding:4px 9px; font-size:11.5px; border-radius:6px;}
+  .spinner{display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; margin-inline-end:8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
 
   /* ===== auth screen ===== */
   .auth-wrap{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
@@ -195,6 +197,18 @@
   #tx-tooltip .tt-desc{color:var(--text-muted); margin-bottom:8px; font-size:12px;}
   #tx-tooltip .tt-row{display:flex; justify-content:space-between; gap:14px; color:var(--text-muted); margin-bottom:2px;}
   #tx-tooltip .tt-row b{color:var(--text); font-weight:500;}
+
+  /* ===== manage tab (categories & cards) ===== */
+  .manage-list .tx-row:last-child{border-bottom:none;}
+  .manage-form-row{display:flex; gap:8px; align-items:center; width:100%;}
+  .manage-form-row input{
+    flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:13.5px; outline:none;
+  }
+  .manage-form-row input:focus{border-color:var(--ring);}
+  .card-num{direction:ltr; unicode-bidi:embed; letter-spacing:.5px;}
+  .manage-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .manage-head h3{margin-bottom:0 !important;}
 
   @media(max-width:420px){
     .summary{grid-template-columns:1fr 1fr;}
@@ -357,9 +371,19 @@ const state = {
   report: null,
   reportPeriod: 'month',
   reportError: '',
+  manageEditCat: null,
+  manageEditCard: null,
+  manageError: '',
+  manageInfo: '',
 };
 
 function setState(patch) { Object.assign(state, patch); render(); }
+
+/** disable a button and show a spinner + text while a request is in flight */
+function setBtnLoading(btn, text) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + text;
+}
 
 /* ---------------- API helper ---------------- */
 async function api(path, { method = 'GET', body, auth = false, skipRefresh = false } = {}) {
@@ -427,7 +451,7 @@ async function doLogin(username, password) {
 }
 
 async function sendOtp(email) {
-  setState({ error: '', info: '' });
+  Object.assign(state, { error: '', info: '' }); // no render() here, otherwise the loading button is wiped
   try {
     const data = await api('/api/account/otp/send/', { method: 'POST', body: { email, purpose: 'registration' } });
     setState({ regEmail: email, registerStep: 2, info: (data && data.detail) || 'کد تایید ارسال شد.' });
@@ -435,7 +459,7 @@ async function sendOtp(email) {
 }
 
 async function verifyOtp(code) {
-  setState({ error: '', info: '' });
+  Object.assign(state, { error: '', info: '' }); // no render() here, otherwise the loading button is wiped
   try {
     const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.regEmail, otp_code: code, purpose: 'registration' } });
     if (!data || !data.verification_token) throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
@@ -460,7 +484,7 @@ async function completeRegister(username, password) {
 
 /* ---- forgot password (reuses the same /otp/send/ + /otp/verify/ endpoints, with purpose:'password_reset') ---- */
 async function sendForgotOtp(email) {
-  setState({ error: '', info: '' });
+  Object.assign(state, { error: '', info: '' }); // no render() here, otherwise the loading button is wiped
   try {
     const data = await api('/api/account/otp/send/', { method: 'POST', body: { email, purpose: 'password_reset' } });
     setState({ forgotEmail: email, forgotStep: 2, info: (data && data.detail) || 'کد بازیابی ارسال شد.' });
@@ -468,7 +492,7 @@ async function sendForgotOtp(email) {
 }
 
 async function verifyForgotOtp(code) {
-  setState({ error: '', info: '' });
+  Object.assign(state, { error: '', info: '' }); // no render() here, otherwise the loading button is wiped
   try {
     const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.forgotEmail, otp_code: code, purpose: 'password_reset' } });
     if (!data || !data.verification_token) throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
@@ -477,7 +501,7 @@ async function verifyForgotOtp(code) {
 }
 
 async function resetPassword(newPassword) {
-  setState({ error: '', info: '' });
+  Object.assign(state, { error: '', info: '' }); // no render() here, otherwise the loading button is wiped
   try {
     await api('/api/account/password/reset/', { method: 'POST', body: { verification_token: state.forgotToken, new_password: newPassword } });
     setState({ authTab: 'login', forgotStep: 1, forgotEmail: '', forgotToken: '', info: 'رمز عبور با موفقیت تغییر کرد. حالا وارد شوید.' });
@@ -528,6 +552,100 @@ async function createCard(bank_name, card_number) {
   const card = await api('/api/transaction/cards/', { method: 'POST', body: { bank_name, card_number }, auth: true });
   state.cards.push(card);
   return card;
+}
+
+/* ---- manage tab: add / edit / delete categories & cards ----
+   NOTE: PATCH/DELETE go to /api/transaction/categories/<id>/ and /api/transaction/cards/<id>/ */
+function manageFail(e, what) {
+  if (e.status === 404 || e.status === 405)
+    return `سرور هنوز «${what}» را پشتیبانی نمی‌کند (آدرس <id>/ برای این مورد در بک‌اند تعریف نشده).`;
+  if (e.status >= 500) return 'خطای سرور. ممکن است مقدار تکراری باشد.';
+  return e.message || 'عملیات ناموفق بود.';
+}
+function normalizeCardNumber(v) {
+  const raw = String(v || '').trim();
+  const compact = digitsOnly(raw);
+  // if the input is only digits / spaces / dashes, store it compact; otherwise keep as typed
+  return /^[\d۰-۹٠-٩\s-]+$/.test(raw) ? compact : raw;
+}
+function txCountBy(field, id) { return state.transactions.filter(t => Number(t[field]) === Number(id)).length; }
+
+async function manageAddCategory(title) {
+  title = (title || '').trim();
+  if (!title) return;
+  if (state.categories.some(c => c.title.trim().toLowerCase() === title.toLowerCase()))
+    return setState({ manageError: 'این دسته‌بندی قبلاً وجود دارد.', manageInfo: '' });
+  setState({ manageError: '', manageInfo: '' });
+  try { await createCategory(title); setState({ manageInfo: 'دسته‌بندی اضافه شد.' }); }
+  catch (e) { setState({ manageError: manageFail(e, 'افزودن دسته‌بندی') }); }
+}
+async function manageSaveCategory(id, title) {
+  title = (title || '').trim();
+  if (!title) return;
+  if (state.categories.some(c => c.id !== id && c.title.trim().toLowerCase() === title.toLowerCase()))
+    return setState({ manageError: 'دسته‌بندی دیگری با این نام وجود دارد.', manageInfo: '' });
+  setState({ manageError: '', manageInfo: '' });
+  try {
+    const data = await api(`/api/transaction/categories/${id}/`, { method: 'PATCH', body: { title }, auth: true });
+    const i = state.categories.findIndex(c => c.id === id);
+    if (i > -1) state.categories[i] = data || { ...state.categories[i], title };
+    setState({ manageEditCat: null, manageInfo: 'دسته‌بندی ویرایش شد.' });
+    loadTransactions();
+  } catch (e) { setState({ manageError: manageFail(e, 'ویرایش دسته‌بندی') }); }
+}
+async function manageDeleteCategory(id) {
+  const cat = state.categories.find(c => c.id === id);
+  if (!cat) return;
+  const n = txCountBy('category', id);
+  if (!confirm(`دسته‌بندی «${cat.title}» حذف شود؟` + (n ? `\n${n} تراکنش بدون دسته‌بندی می‌شوند.` : ''))) return;
+  setState({ manageError: '', manageInfo: '' });
+  try {
+    await api(`/api/transaction/categories/${id}/`, { method: 'DELETE', auth: true });
+    state.categories = state.categories.filter(c => c.id !== id);
+    setState({ manageEditCat: null, manageInfo: 'دسته‌بندی حذف شد.' });
+    loadTransactions();
+  } catch (e) { setState({ manageError: manageFail(e, 'حذف دسته‌بندی') }); }
+}
+
+async function manageAddCard(bank, number) {
+  bank = (bank || '').trim();
+  number = normalizeCardNumber(number);
+  if (!bank || !number) return setState({ manageError: 'نام بانک و شماره کارت الزامی است.', manageInfo: '' });
+  if (number.length > 20) return setState({ manageError: 'شماره کارت نباید بیشتر از ۲۰ کاراکتر باشد.', manageInfo: '' });
+  if (state.cards.some(c => c.card_number === number))
+    return setState({ manageError: 'این شماره کارت قبلاً ثبت شده است.', manageInfo: '' });
+  setState({ manageError: '', manageInfo: '' });
+  try { await createCard(bank, number); setState({ manageInfo: 'کارت اضافه شد.' }); }
+  catch (e) { setState({ manageError: manageFail(e, 'افزودن کارت') }); }
+}
+async function manageSaveCard(id, bank, number) {
+  bank = (bank || '').trim();
+  number = normalizeCardNumber(number);
+  if (!bank || !number) return setState({ manageError: 'نام بانک و شماره کارت الزامی است.', manageInfo: '' });
+  if (number.length > 20) return setState({ manageError: 'شماره کارت نباید بیشتر از ۲۰ کاراکتر باشد.', manageInfo: '' });
+  if (state.cards.some(c => c.id !== id && c.card_number === number))
+    return setState({ manageError: 'کارت دیگری با این شماره وجود دارد.', manageInfo: '' });
+  setState({ manageError: '', manageInfo: '' });
+  try {
+    const data = await api(`/api/transaction/cards/${id}/`, { method: 'PATCH', body: { bank_name: bank, card_number: number }, auth: true });
+    const i = state.cards.findIndex(c => c.id === id);
+    if (i > -1) state.cards[i] = data || { ...state.cards[i], bank_name: bank, card_number: number };
+    setState({ manageEditCard: null, manageInfo: 'کارت ویرایش شد.' });
+    loadTransactions();
+  } catch (e) { setState({ manageError: manageFail(e, 'ویرایش کارت') }); }
+}
+async function manageDeleteCard(id) {
+  const card = state.cards.find(c => c.id === id);
+  if (!card) return;
+  const n = txCountBy('card', id);
+  if (!confirm(`کارت «${card.bank_name}» حذف شود؟` + (n ? `\n${n} تراکنش بدون کارت می‌شوند.` : ''))) return;
+  setState({ manageError: '', manageInfo: '' });
+  try {
+    await api(`/api/transaction/cards/${id}/`, { method: 'DELETE', auth: true });
+    state.cards = state.cards.filter(c => c.id !== id);
+    setState({ manageEditCard: null, manageInfo: 'کارت حذف شد.' });
+    loadTransactions();
+  } catch (e) { setState({ manageError: manageFail(e, 'حذف کارت') }); }
 }
 
 async function saveTransaction(payload, id) {
@@ -730,11 +848,13 @@ function renderApp() {
       <button data-act="app-tab" data-tab="list" class="${state.appTab==='list'?'active':''}">تراکنش‌ها</button>
       <button data-act="app-tab" data-tab="form" class="${state.appTab==='form'?'active':''}">${state.editingId ? 'ویرایش' : 'افزودن'}</button>
       <button data-act="app-tab" data-tab="report" class="${state.appTab==='report'?'active':''}">گزارش</button>
+      <button data-act="app-tab" data-tab="manage" class="${state.appTab==='manage'?'active':''}">دسته‌بندی ها و کارت‌ها</button>
     </div>
 
     ${state.appTab === 'list' ? renderList() : ''}
     ${state.appTab === 'form' ? renderForm() : ''}
     ${state.appTab === 'report' ? renderReport() : ''}
+    ${state.appTab === 'manage' ? renderManage() : ''}
   </div>
 
   <footer class="credit">Pocket Ledger · متصل به ${escapeHtml(API_BASE)}</footer>
@@ -896,6 +1016,100 @@ function renderForm() {
       ${editing ? `<button type="button" class="btn btn-ghost" data-act="cancel-edit">انصراف</button>` : ''}
     </div>
   </form>`;
+}
+
+/* ---- manage tab (categories & cards) ---- */
+function maskCard(n) {
+  const s = String(n || '');
+  return s.length > 4 ? '•••• ' + s.slice(-4) : s;
+}
+
+function renderManageCategoryRow(c) {
+  if (state.manageEditCat === c.id) {
+    return `
+    <form data-act="save-cat" data-id="${c.id}" class="tx-row">
+      <div class="manage-form-row">
+        <input name="title" required maxlength="100" value="${escapeHtml(c.title)}" />
+        <button type="submit" class="btn btn-primary btn-xs">ذخیره</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-act="cancel-manage-edit">انصراف</button>
+      </div>
+    </form>`;
+  }
+  const n = txCountBy('category', c.id);
+  return `
+  <div class="tx-row">
+    <div class="tx-main">
+      <div class="tx-title">${escapeHtml(c.title)}</div>
+      <div class="tx-meta"><span class="pill">${faDigits(n)} تراکنش</span></div>
+    </div>
+    <div class="tx-actions">
+      <button class="icon-btn" title="ویرایش" data-act="edit-cat" data-id="${c.id}">✎</button>
+      <button class="icon-btn" title="حذف" data-act="delete-cat" data-id="${c.id}">✕</button>
+    </div>
+  </div>`;
+}
+
+function renderManageCardRow(c) {
+  if (state.manageEditCard === c.id) {
+    return `
+    <form data-act="save-card" data-id="${c.id}" class="tx-row">
+      <div class="manage-form-row">
+        <input name="bank_name" required maxlength="100" value="${escapeHtml(c.bank_name)}" placeholder="نام بانک" />
+        <input name="card_number" required maxlength="24" dir="ltr" value="${escapeHtml(c.card_number)}" placeholder="شماره کارت" />
+      </div>
+      <div class="row" style="flex-shrink:0;">
+        <button type="submit" class="btn btn-primary btn-xs">ذخیره</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-act="cancel-manage-edit">انصراف</button>
+      </div>
+    </form>`;
+  }
+  const n = txCountBy('card', c.id);
+  return `
+  <div class="tx-row">
+    <div class="tx-main">
+      <div class="tx-title">${escapeHtml(c.bank_name)}</div>
+      <div class="tx-meta"><span class="card-num">${escapeHtml(maskCard(c.card_number))}</span><span class="pill">${faDigits(n)} تراکنش</span></div>
+    </div>
+    <div class="tx-actions">
+      <button class="icon-btn" title="ویرایش" data-act="edit-card" data-id="${c.id}">✎</button>
+      <button class="icon-btn" title="حذف" data-act="delete-card" data-id="${c.id}">✕</button>
+    </div>
+  </div>`;
+}
+
+function renderManage() {
+  const cats = [...state.categories].sort((a, b) => a.title.localeCompare(b.title, 'fa'));
+  const cards = [...state.cards].sort((a, b) => a.bank_name.localeCompare(b.bank_name, 'fa'));
+  return `
+  ${state.manageError ? `<div class="error-box" style="margin-bottom:14px;">${escapeHtml(state.manageError)}</div>` : ''}
+  ${state.manageInfo ? `<div class="ok-box" style="margin-bottom:14px;">${escapeHtml(state.manageInfo)}</div>` : ''}
+
+  <div class="card-block">
+    <div class="manage-head"><h3>دسته‌بندی‌ها</h3><span class="muted">${faDigits(cats.length)} مورد</span></div>
+    <form data-act="add-cat-form" class="inline-add" style="margin-top:0; margin-bottom:12px;">
+      <div class="manage-form-row">
+        <input name="title" required maxlength="100" placeholder="نام دسته‌بندی جدید" />
+        <button type="submit" class="btn btn-primary btn-sm">افزودن</button>
+      </div>
+    </form>
+    ${cats.length
+      ? `<div class="ledger manage-list">${cats.map(renderManageCategoryRow).join('')}</div>`
+      : `<div class="empty" style="padding:24px 10px;">هنوز دسته‌بندی‌ای ساخته نشده.</div>`}
+  </div>
+
+  <div class="card-block">
+    <div class="manage-head"><h3>کارت‌ها</h3><span class="muted">${faDigits(cards.length)} مورد</span></div>
+    <form data-act="add-card-form" class="inline-add" style="margin-top:0; margin-bottom:12px;">
+      <div class="manage-form-row">
+        <input name="bank_name" required maxlength="100" placeholder="نام بانک" />
+        <input name="card_number" required maxlength="24" dir="ltr" placeholder="شماره کارت" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">افزودن کارت</button>
+    </form>
+    ${cards.length
+      ? `<div class="ledger manage-list">${cards.map(renderManageCardRow).join('')}</div>`
+      : `<div class="empty" style="padding:24px 10px;">هنوز کارتی ثبت نشده.</div>`}
+  </div>`;
 }
 
 /* ---- jalali picker markup + wiring ---- */
@@ -1088,7 +1302,7 @@ function bindEvents(root) {
   root.querySelectorAll('[data-act="app-tab"]').forEach(el =>
     el.addEventListener('click', () => {
       state.draftTx = null; // intentional navigation away/into the form resets any in-progress draft
-      setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false });
+      setState({ appTab: el.dataset.tab, editingId: el.dataset.tab==='form' ? state.editingId : null, error:'', showAddCategory:false, showAddCard:false, manageEditCat:null, manageEditCard:null, manageError:'', manageInfo:'' });
     }));
 
   const logoutBtn = root.querySelector('[data-act="logout"]');
@@ -1109,7 +1323,7 @@ function bindEvents(root) {
     e.preventDefault();
     const btn = otpSendForm.querySelector('button[type="submit"]');
     const email = new FormData(otpSendForm).get('email');
-    btn.disabled = true; btn.textContent = 'در حال ارسال…';
+    setBtnLoading(btn, 'در حال ارسال…');
     try { await sendOtp(email); }
     finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'ارسال کد تایید'; } }
   });
@@ -1119,7 +1333,7 @@ function bindEvents(root) {
     e.preventDefault();
     const btn = otpVerifyForm.querySelector('button[type="submit"]');
     const code = new FormData(otpVerifyForm).get('otp_code');
-    btn.disabled = true; btn.textContent = 'در حال بررسی…';
+    setBtnLoading(btn, 'در حال بررسی…');
     try { await verifyOtp(code); }
     finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'تایید کد'; } }
   });
@@ -1148,7 +1362,7 @@ function bindEvents(root) {
     e.preventDefault();
     const btn = forgotSendForm.querySelector('button[type="submit"]');
     const email = new FormData(forgotSendForm).get('email');
-    btn.disabled = true; btn.textContent = 'در حال ارسال…';
+    setBtnLoading(btn, 'در حال ارسال…');
     try { await sendForgotOtp(email); }
     finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'ارسال کد بازیابی'; } }
   });
@@ -1158,7 +1372,7 @@ function bindEvents(root) {
     e.preventDefault();
     const btn = forgotVerifyForm.querySelector('button[type="submit"]');
     const code = new FormData(forgotVerifyForm).get('otp_code');
-    btn.disabled = true; btn.textContent = 'در حال بررسی…';
+    setBtnLoading(btn, 'در حال بررسی…');
     try { await verifyForgotOtp(code); }
     finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'تایید کد'; } }
   });
@@ -1171,7 +1385,7 @@ function bindEvents(root) {
     const pw2 = f.get('new_password_confirm');
     if (pw !== pw2) { setState({ error: 'رمز عبور و تکرار آن یکسان نیستند.' }); return; }
     const btn = resetPasswordForm.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.textContent = 'در حال ذخیره…';
+    setBtnLoading(btn, 'در حال ذخیره…');
     try { await resetPassword(pw); }
     finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'تغییر رمز عبور'; } }
   });
@@ -1247,6 +1461,40 @@ function bindEvents(root) {
     };
     saveTransaction(payload, state.editingId);
   });
+
+  /* ---- manage tab wiring ---- */
+  const addCatForm = root.querySelector('[data-act="add-cat-form"]');
+  if (addCatForm) addCatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    manageAddCategory(new FormData(addCatForm).get('title'));
+  });
+  const addCardForm = root.querySelector('[data-act="add-card-form"]');
+  if (addCardForm) addCardForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(addCardForm);
+    manageAddCard(f.get('bank_name'), f.get('card_number'));
+  });
+  root.querySelectorAll('[data-act="edit-cat"]').forEach(el =>
+    el.addEventListener('click', () => setState({ manageEditCat: Number(el.dataset.id), manageEditCard: null, manageError: '', manageInfo: '' })));
+  root.querySelectorAll('[data-act="edit-card"]').forEach(el =>
+    el.addEventListener('click', () => setState({ manageEditCard: Number(el.dataset.id), manageEditCat: null, manageError: '', manageInfo: '' })));
+  root.querySelectorAll('[data-act="cancel-manage-edit"]').forEach(el =>
+    el.addEventListener('click', () => setState({ manageEditCat: null, manageEditCard: null, manageError: '' })));
+  root.querySelectorAll('[data-act="save-cat"]').forEach(form =>
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      manageSaveCategory(Number(form.dataset.id), new FormData(form).get('title'));
+    }));
+  root.querySelectorAll('[data-act="save-card"]').forEach(form =>
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = new FormData(form);
+      manageSaveCard(Number(form.dataset.id), f.get('bank_name'), f.get('card_number'));
+    }));
+  root.querySelectorAll('[data-act="delete-cat"]').forEach(el =>
+    el.addEventListener('click', () => manageDeleteCategory(Number(el.dataset.id))));
+  root.querySelectorAll('[data-act="delete-card"]').forEach(el =>
+    el.addEventListener('click', () => manageDeleteCard(Number(el.dataset.id))));
 
   const periodSelect = root.querySelector('[data-role="period-select"]');
   if (periodSelect) periodSelect.addEventListener('change', () => setState({ reportPeriod: periodSelect.value, report: null, reportError: '' }));
