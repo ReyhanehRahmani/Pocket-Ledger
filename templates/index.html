@@ -745,6 +745,10 @@ function renderApp() {
 function renderLedger(transactions) {
   if (!transactions.length) return `<div class="empty">تراکنشی برای نمایش نیست.</div>`;
 
+  // newest day first; within the same day, the most recently created (highest id) first
+  transactions = [...transactions].sort((a, b) =>
+    a.date === b.date ? b.id - a.id : (a.date < b.date ? 1 : -1));
+
   txIndex = {};
   let html = '<div class="ledger">';
   let lastDate = null;
