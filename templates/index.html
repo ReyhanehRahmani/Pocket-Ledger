@@ -576,15 +576,17 @@ function fmtAmount(n) { return faDigits(Number(n).toLocaleString('en-US')) + ' �
 /** income/expense/balance for THIS jalali month only */
 function monthTotals() {
   const [cjy, cjm] = todayJalali();
-  let income = 0, expense = 0;
+  let income = 0, expense = 0, allIncome = 0, allExpense = 0;
   for (const t of state.transactions) {
+    const amt = Number(t.amount);
+    if (t.type === 'income') allIncome += amt; else allExpense += amt;
     const [jy, jm] = gregStrToJalali(t.date);
     if (jy === cjy && jm === cjm) {
-      if (t.type === 'income') income += Number(t.amount);
-      else expense += Number(t.amount);
+      if (t.type === 'income') income += amt; else expense += amt;
     }
   }
-  return { income, expense, balance: income - expense };
+  // income/expense are for the current jalali month; balance is all-time
+  return { income, expense, balance: allIncome - allExpense };
 }
 
 let txIndex = {}; // id -> tx, rebuilt each render, used by hover tooltip
@@ -721,7 +723,7 @@ function renderApp() {
     <div class="summary">
       <div class="cell income"><div class="label">درآمد</div><div class="value">${fmtAmount(t.income)}</div></div>
       <div class="cell expense"><div class="label">هزینه</div><div class="value">${fmtAmount(t.expense)}</div></div>
-      <div class="cell"><div class="label">مانده</div><div class="value">${fmtAmount(t.balance)}</div></div>
+      <div class="cell"><div class="label">مانده کل</div><div class="value">${fmtAmount(t.balance)}</div></div>
     </div>
 
     <div class="nav">
