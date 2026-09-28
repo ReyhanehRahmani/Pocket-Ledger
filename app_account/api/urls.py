@@ -21,6 +21,7 @@ urlpatterns = [
 
     path("otp/send/", SendEmailOTPView.as_view(), name="send-email-otp"),
     path("otp/verify/", VerifyOTPView.as_view(), name="verify-otp"),
-    path("register/", UserRegistrationView.as_view(), name="user-register"), 
+    path("register/", UserRegistrationView.as_view(), name="user-register"),
+    path("password/reset/", ResetPasswordView.as_view(), name="reset-password"),
 ]
 
