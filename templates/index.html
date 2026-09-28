@@ -98,6 +98,17 @@
   .btn-xs{padding:4px 9px; font-size:11.5px; border-radius:6px;}
   .spinner{display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; margin-inline-end:8px;}
   @keyframes spin{to{transform:rotate(360deg);}}
+  .chart-wrap{display:flex; align-items:center; gap:22px; flex-wrap:wrap; justify-content:center;}
+  .donut{width:180px; height:180px; flex:none;}
+  .donut .seg{transition:opacity .15s; cursor:default;}
+  .donut .seg:hover{opacity:.75;}
+  .donut-total{font-size:11px; fill:var(--text-muted);}
+  .donut-value{font-size:13px; font-weight:600; fill:var(--text);}
+  .legend{flex:1; min-width:200px; display:flex; flex-direction:column; gap:8px;}
+  .legend-row{display:flex; align-items:center; gap:8px; font-size:13px;}
+  .legend-dot{width:10px; height:10px; border-radius:3px; flex:none;}
+  .legend-name{flex:1; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .legend-pct{color:var(--text-muted); font-size:12px; min-width:34px; text-align:left;}
 
   /* ===== auth screen ===== */
   .auth-wrap{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; }
@@ -1200,6 +1211,61 @@ function bindTooltips(root) {
   });
 }
 
+/** donut chart of per-category totals for one transaction type (pure inline SVG, no libs) */
+const CHART_COLORS = ['#8fae87', '#c07687', '#d4b483', '#7e9cb8', '#a98bb5', '#c9a27e', '#7fb5ae', '#b5b07e', '#8f969d'];
+function renderCategoryChart(transactions, type, heading) {
+  const sums = new Map();
+  (transactions || []).forEach(t => {
+    if (t.type !== type) return;
+    const key = t.category_title || 'بدون دسته';
+    sums.set(key, (sums.get(key) || 0) + Number(t.amount));
+  });
+  let items = [...sums.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+  if (!items.length) return '';
+  const MAX = 8;
+  if (items.length > MAX) {
+    const rest = items.slice(MAX - 1).reduce((a, i) => a + i.total, 0);
+    items = items.slice(0, MAX - 1).concat({ name: 'سایر', total: rest });
+  }
+  const sum = items.reduce((a, i) => a + i.total, 0);
+  if (!(sum > 0)) return '';
+
+  const R = 54, C = 2 * Math.PI * R, gap = items.length > 1 ? 1.5 : 0;
+  let acc = 0;
+  const segs = items.map((it, i) => {
+    const frac = it.total / sum;
+    const len = Math.max(0, frac * C - gap);
+    const off = -acc;
+    acc += frac * C;
+    const pct = faDigits((frac * 100).toFixed(frac * 100 < 10 ? 1 : 0));
+    return `<circle class="seg" cx="70" cy="70" r="${R}" fill="none" stroke="${CHART_COLORS[i % CHART_COLORS.length]}" stroke-width="20"
+      stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${off}"><title>${escapeHtml(it.name)}: ${fmtAmount(it.total)} (${pct}٪)</title></circle>`;
+  }).join('');
+
+  const legend = items.map((it, i) => {
+    const frac = it.total / sum * 100;
+    return `<div class="legend-row">
+      <span class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>
+      <span class="legend-name" title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</span>
+      <span>${fmtAmount(it.total)}</span>
+      <span class="legend-pct">${faDigits(frac.toFixed(frac < 10 ? 1 : 0))}٪</span>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="card-block" style="margin-top:14px;">
+    <h3>${heading}</h3>
+    <div class="chart-wrap">
+      <svg class="donut" viewBox="0 0 140 140" role="img" aria-label="${heading}">
+        <g transform="rotate(-90 70 70)">${segs}</g>
+        <text x="70" y="66" text-anchor="middle" class="donut-total">مجموع</text>
+        <text x="70" y="83" text-anchor="middle" class="donut-value">${faDigits(Math.round(sum).toLocaleString('en-US'))}</text>
+      </svg>
+      <div class="legend">${legend}</div>
+    </div>
+  </div>`;
+}
+
 function renderReport() {
   const period = state.reportPeriod;
   const [cjy] = todayJalali();
@@ -1258,6 +1324,8 @@ function renderReport() {
           ${r.category_totals.map(c => `<div class="spread"><span class="muted">${escapeHtml(c.category__title || 'بدون دسته')}</span><span>${fmtAmount(c.total)}</span></div>`).join('')}
         </div>
       </div>` : ''}
+    ${renderCategoryChart(r.transactions, 'expense', 'نمودار هزینه‌ها بر اساس دسته‌بندی')}
+    ${renderCategoryChart(r.transactions, 'income', 'نمودار درآمدها بر اساس دسته‌بندی')}
     ${r.transactions && r.transactions.length ? `
       <div style="margin-top:18px;">
         <h3 style="font-size:14px; font-weight:600; margin-bottom:10px;">تراکنش‌های این بازه</h3>
