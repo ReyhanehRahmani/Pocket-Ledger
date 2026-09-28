@@ -337,6 +337,9 @@ const state = {
   registerStep: 1,
   regEmail: '',
   regToken: '',
+  forgotStep: 1,
+  forgotEmail: '',
+  forgotToken: '',
   access: localStorage.getItem('pl_access') || null,
   refresh: localStorage.getItem('pl_refresh') || null,
   username: localStorage.getItem('pl_username') || '',
@@ -426,7 +429,7 @@ async function doLogin(username, password) {
 async function sendOtp(email) {
   setState({ error: '', info: '' });
   try {
-    const data = await api('/api/account/otp/send/', { method: 'POST', body: { email } });
+    const data = await api('/api/account/otp/send/', { method: 'POST', body: { email, purpose: 'registration' } });
     setState({ regEmail: email, registerStep: 2, info: (data && data.detail) || 'کد تایید ارسال شد.' });
   } catch (e) { setState({ error: e.message || 'ارسال کد ناموفق بود.' }); }
 }
@@ -434,7 +437,7 @@ async function sendOtp(email) {
 async function verifyOtp(code) {
   setState({ error: '', info: '' });
   try {
-    const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.regEmail, otp_code: code } });
+    const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.regEmail, otp_code: code, purpose: 'registration' } });
     if (!data || !data.verification_token) throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
     setState({ regToken: data.verification_token, registerStep: 3, info: '' });
   } catch (e) { setState({ error: e.message || 'تایید کد ناموفق بود.' }); }
@@ -455,6 +458,32 @@ async function completeRegister(username, password) {
   } catch (e) { setState({ error: e.message }); }
 }
 
+/* ---- forgot password (reuses the same /otp/send/ + /otp/verify/ endpoints, with purpose:'password_reset') ---- */
+async function sendForgotOtp(email) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/account/otp/send/', { method: 'POST', body: { email, purpose: 'password_reset' } });
+    setState({ forgotEmail: email, forgotStep: 2, info: (data && data.detail) || 'کد بازیابی ارسال شد.' });
+  } catch (e) { setState({ error: e.message || 'ارسال کد ناموفق بود.' }); }
+}
+
+async function verifyForgotOtp(code) {
+  setState({ error: '', info: '' });
+  try {
+    const data = await api('/api/account/otp/verify/', { method: 'POST', body: { email: state.forgotEmail, otp_code: code, purpose: 'password_reset' } });
+    if (!data || !data.verification_token) throw new Error('پاسخ نامعتبر از سرور دریافت شد.');
+    setState({ forgotToken: data.verification_token, forgotStep: 3, info: '' });
+  } catch (e) { setState({ error: e.message || 'تایید کد ناموفق بود.' }); }
+}
+
+async function resetPassword(newPassword) {
+  setState({ error: '', info: '' });
+  try {
+    await api('/api/account/password/reset/', { method: 'POST', body: { verification_token: state.forgotToken, new_password: newPassword } });
+    setState({ authTab: 'login', forgotStep: 1, forgotEmail: '', forgotToken: '', info: 'رمز عبور با موفقیت تغییر کرد. حالا وارد شوید.' });
+  } catch (e) { setState({ error: e.message || 'تغییر رمز عبور ناموفق بود.' }); }
+}
+
 function logout() {
   localStorage.removeItem('pl_access');
   localStorage.removeItem('pl_refresh');
@@ -462,6 +491,7 @@ function logout() {
   Object.assign(state, {
     view: 'auth', access: null, refresh: null, username: '', transactions: [],
     categories: [], cards: [], authTab: 'login', registerStep: 1, error: '', info: '', report: null,
+    forgotStep: 1, forgotEmail: '', forgotToken: '',
   });
   render();
 }
@@ -529,20 +559,34 @@ async function runReport(params) {
 }
 
 /* ---------------- helpers ---------------- */
+/** normalize Persian/Arabic digits to latin and keep digits only */
+function digitsOnly(str) {
+  return String(str ?? '')
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[^0-9]/g, '');
+}
+/** "1234567" -> "1,234,567" (groups of 3 from the right) */
+function groupThousands(str) {
+  const d = digitsOnly(str).replace(/^0+(?=\d)/, '');
+  return d.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 function fmtAmount(n) { return faDigits(Number(n).toLocaleString('en-US')) + ' تومان'; }
 
 /** income/expense/balance for THIS jalali month only */
 function monthTotals() {
   const [cjy, cjm] = todayJalali();
-  let income = 0, expense = 0;
+  let income = 0, expense = 0, allIncome = 0, allExpense = 0;
   for (const t of state.transactions) {
+    const amt = Number(t.amount);
+    if (t.type === 'income') allIncome += amt; else allExpense += amt;
     const [jy, jm] = gregStrToJalali(t.date);
     if (jy === cjy && jm === cjm) {
-      if (t.type === 'income') income += Number(t.amount);
-      else expense += Number(t.amount);
+      if (t.type === 'income') income += amt; else expense += amt;
     }
   }
-  return { income, expense, balance: income - expense };
+  // income/expense are for the current jalali month; balance is all-time
+  return { income, expense, balance: allIncome - allExpense };
 }
 
 let txIndex = {}; // id -> tx, rebuilt each render, used by hover tooltip
@@ -555,10 +599,12 @@ function render() {
   root.innerHTML = state.view === 'auth' ? renderAuth() : renderApp();
   bindEvents(root);
   bindJalaliPickers(root);
+  bindAmountInputs(root);
   bindTooltips(root);
 }
 
 function renderAuth() {
+  const showTabs = state.authTab === 'login' || state.authTab === 'register';
   return `
   <div class="auth-wrap">
     <div class="auth-card">
@@ -567,13 +613,14 @@ function renderAuth() {
         <h1>دفترچه</h1>
         <p>Pocket Ledger — مدیریت ساده دخل و خرج</p>
       </div>
+      ${showTabs ? `
       <div class="tabs">
         <button data-act="auth-tab" data-tab="login" class="${state.authTab==='login'?'active':''}">ورود</button>
         <button data-act="auth-tab" data-tab="register" class="${state.authTab==='register'?'active':''}">ثبت‌نام</button>
-      </div>
+      </div>` : ''}
       ${state.error ? `<div class="error-box" style="margin-bottom:14px;">${escapeHtml(state.error)}</div>` : ''}
       ${state.info ? `<div class="ok-box" style="margin-bottom:14px;">${escapeHtml(state.info)}</div>` : ''}
-      ${state.authTab === 'login' ? renderLoginForm() : renderRegisterForm()}
+      ${state.authTab === 'login' ? renderLoginForm() : state.authTab === 'register' ? renderRegisterForm() : renderForgotForm()}
       <div class="hint" style="margin-top:18px; text-align:center;">
         آدرس سرور: <a href="#" data-act="edit-api-base" style="text-decoration:underline;">${escapeHtml(API_BASE)}</a>
       </div>
@@ -587,6 +634,47 @@ function renderLoginForm() {
     <div class="field"><label>نام کاربری</label><input name="username" required autocomplete="username" /></div>
     <div class="field"><label>رمز عبور</label><input name="password" type="password" required autocomplete="current-password" /></div>
     <button type="submit" class="btn btn-primary btn-block">ورود</button>
+  </form>
+  <div style="text-align:center; margin-top:14px;">
+    <a href="#" data-act="goto-forgot" style="font-size:12.5px; color:var(--text-muted); text-decoration:underline;">رمز عبور را فراموش کرده‌اید؟</a>
+  </div>`;
+}
+
+function renderForgotForm() {
+  const dots = [1,2,3].map(n => `<span class="${state.forgotStep===n?'active':''}"></span>`).join('');
+  if (state.forgotStep === 1) {
+    return `
+    <div class="step-dots">${dots}</div>
+    <p class="muted" style="margin-bottom:14px; text-align:center;">ایمیلی که با آن ثبت‌نام کرده‌اید را وارد کنید.</p>
+    <form data-act="forgot-send-form" class="stack">
+      <div class="field"><label>ایمیل</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com" /></div>
+      <button type="submit" class="btn btn-primary btn-block">ارسال کد بازیابی</button>
+      <button type="button" data-act="back-to-login" class="btn btn-ghost btn-block">بازگشت به ورود</button>
+    </form>`;
+  }
+  if (state.forgotStep === 2) {
+    return `
+    <div class="step-dots">${dots}</div>
+    <p class="muted" style="margin-bottom:14px; text-align:center;">کد ۶ رقمی ارسال‌شده به ${escapeHtml(state.forgotEmail)} را وارد کنید.</p>
+    <form data-act="forgot-verify-form" class="stack">
+      <div class="field"><label>کد تایید</label><input name="otp_code" required maxlength="6" inputmode="numeric" placeholder="――――――" /></div>
+      <button type="submit" class="btn btn-primary btn-block">تایید کد</button>
+      <button type="button" data-act="forgot-back-to-email" class="btn btn-ghost btn-block">تغییر ایمیل</button>
+    </form>`;
+  }
+  return `
+  <div class="step-dots">${dots}</div>
+  <form data-act="reset-password-form" class="stack">
+    <div class="field">
+      <label>رمز عبور جدید</label>
+      <input name="new_password" type="password" required minlength="8" />
+      <span class="hint">حداقل ۸ کاراکتر</span>
+    </div>
+    <div class="field">
+      <label>تکرار رمز عبور جدید</label>
+      <input name="new_password_confirm" type="password" required minlength="8" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">تغییر رمز عبور</button>
   </form>`;
 }
 
@@ -635,7 +723,7 @@ function renderApp() {
     <div class="summary">
       <div class="cell income"><div class="label">درآمد</div><div class="value">${fmtAmount(t.income)}</div></div>
       <div class="cell expense"><div class="label">هزینه</div><div class="value">${fmtAmount(t.expense)}</div></div>
-      <div class="cell"><div class="label">مانده</div><div class="value">${fmtAmount(t.balance)}</div></div>
+      <div class="cell"><div class="label">مانده کل</div><div class="value">${fmtAmount(t.balance)}</div></div>
     </div>
 
     <div class="nav">
@@ -732,7 +820,7 @@ function renderForm() {
     ? gregStrToJalali(editing.date)
     : (draft ? [Number(draft.date_y), Number(draft.date_m), Number(draft.date_d)] : todayJalali());
   const vTitle = editing ? editing.title : (draft ? draft.title : '');
-  const vAmount = editing ? editing.amount : (draft ? draft.amount : '');
+  const vAmount = editing ? groupThousands(Math.round(Number(editing.amount))) : (draft ? groupThousands(draft.amount) : '');
   const vDescription = editing ? (editing.description || '') : (draft ? draft.description : '');
   const vCategory = editing ? editing.category : (draft ? draft.category : '');
   const vCard = editing ? editing.card : (draft ? draft.card : '');
@@ -755,7 +843,7 @@ function renderForm() {
     <div class="grid-2">
       <div class="field">
         <label>مبلغ (تومان)</label>
-        <input name="amount" type="number" min="0" required value="${vAmount}" />
+        <input name="amount" type="text" inputmode="numeric" autocomplete="off" required dir="ltr" style="text-align:right;" data-role="amount-input" value="${vAmount}" placeholder="مثلاً 250,000" />
       </div>
       <div class="field">
         <label>تاریخ (شمسی)</label>
@@ -821,6 +909,20 @@ function renderJalaliPicker(prefix, jy, jm, jd) {
     <select data-role="jd-month" name="${prefix}_m">${monthOpts}</select>
     <select data-role="jd-year" name="${prefix}_y">${yearOpts}</select>
   </div>`;
+}
+
+function bindAmountInputs(root) {
+  root.querySelectorAll('[data-role="amount-input"]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const caret = inp.selectionStart ?? inp.value.length;
+      const digitsBefore = digitsOnly(inp.value.slice(0, caret)).length;
+      inp.value = groupThousands(inp.value);
+      // restore caret after the same number of digits
+      let pos = 0, seen = 0;
+      while (pos < inp.value.length && seen < digitsBefore) { if (/\d/.test(inp.value[pos])) seen++; pos++; }
+      try { inp.setSelectionRange(pos, pos); } catch (e) {}
+    });
+  });
 }
 
 function bindJalaliPickers(root) {
@@ -1024,6 +1126,52 @@ function bindEvents(root) {
   const registerForm = root.querySelector('[data-act="register-form"]');
   if (registerForm) registerForm.addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(registerForm); completeRegister(f.get('username'), f.get('password')); });
 
+  /* ---- forgot password wiring ---- */
+  const gotoForgot = root.querySelector('[data-act="goto-forgot"]');
+  if (gotoForgot) gotoForgot.addEventListener('click', (e) => {
+    e.preventDefault();
+    setState({ authTab: 'forgot', forgotStep: 1, forgotEmail: '', forgotToken: '', error: '', info: '' });
+  });
+
+  root.querySelectorAll('[data-act="back-to-login"]').forEach(el =>
+    el.addEventListener('click', () => setState({ authTab: 'login', forgotStep: 1, forgotEmail: '', forgotToken: '', error: '', info: '' })));
+
+  const forgotBackToEmail = root.querySelector('[data-act="forgot-back-to-email"]');
+  if (forgotBackToEmail) forgotBackToEmail.addEventListener('click', () => setState({ forgotStep: 1, error: '', info: '' }));
+
+  const forgotSendForm = root.querySelector('[data-act="forgot-send-form"]');
+  if (forgotSendForm) forgotSendForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = forgotSendForm.querySelector('button[type="submit"]');
+    const email = new FormData(forgotSendForm).get('email');
+    btn.disabled = true; btn.textContent = 'در حال ارسال…';
+    try { await sendForgotOtp(email); }
+    finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'ارسال کد بازیابی'; } }
+  });
+
+  const forgotVerifyForm = root.querySelector('[data-act="forgot-verify-form"]');
+  if (forgotVerifyForm) forgotVerifyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = forgotVerifyForm.querySelector('button[type="submit"]');
+    const code = new FormData(forgotVerifyForm).get('otp_code');
+    btn.disabled = true; btn.textContent = 'در حال بررسی…';
+    try { await verifyForgotOtp(code); }
+    finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'تایید کد'; } }
+  });
+
+  const resetPasswordForm = root.querySelector('[data-act="reset-password-form"]');
+  if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = new FormData(resetPasswordForm);
+    const pw = f.get('new_password');
+    const pw2 = f.get('new_password_confirm');
+    if (pw !== pw2) { setState({ error: 'رمز عبور و تکرار آن یکسان نیستند.' }); return; }
+    const btn = resetPasswordForm.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'در حال ذخیره…';
+    try { await resetPassword(pw); }
+    finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'تغییر رمز عبور'; } }
+  });
+
   root.querySelectorAll('[data-act="edit-tx"]').forEach(el =>
     el.addEventListener('click', () => setState({ editingId: Number(el.dataset.id), appTab: 'form', showAddCategory:false, showAddCard:false })));
 
@@ -1088,7 +1236,7 @@ function bindEvents(root) {
       title: f.get('title'),
       description: f.get('description') || '',
       type: f.get('type'),
-      amount: Number(f.get('amount')),
+      amount: Number(digitsOnly(f.get('amount'))),
       date: dateStr,
       category: f.get('category') ? Number(f.get('category')) : null,
       card: f.get('card') ? Number(f.get('card')) : null,
