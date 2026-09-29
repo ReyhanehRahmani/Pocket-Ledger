@@ -11,7 +11,14 @@ from app_transaction.models import *
 from app_transaction.api.serializers import *
 from django.db.models import Sum
 from rest_framework.generics import ListAPIView
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView, ListCreateAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView
+
+
+class UserTransactionMixin:
+    """فقط تراکنش‌های خود کاربر لاگین‌شده در دسترس هستند."""
+    def get_queryset(self):
+        return Transaction.objects.filter(user=self.request.user)
+
 
 class CategoryListCreateView(ListCreateAPIView):
     authentication_classes = [JWTAuthentication]
@@ -37,53 +44,46 @@ class CardListCreateView(ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class CreateTransaction(CreateAPIView) :
-
+class CategoryDetailView(RetrieveUpdateDestroyAPIView):
+    """GET / PATCH / DELETE یک دسته‌بندی (فقط برای صاحبش)"""
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = CategorySerializer
 
-    queryset = Transaction.objects.all()
-    serializer_class = TransactionSerializer
-
-    def perform_create(self, serializer):
-        
-        serializer.save(user=self.request.user)
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
 
 
-class ShowTransaction(RetrieveAPIView):
-
+class CardDetailView(RetrieveUpdateDestroyAPIView):
+    """GET / PATCH / DELETE یک کارت (فقط برای صاحبش)"""
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = CardSerializer
 
-    queryset = Transaction.objects.all()
-    serializer_class = TransactionSerializer
+    def get_queryset(self):
+        return Card.objects.filter(user=self.request.user)
 
 
-class UpdateTransaction(UpdateAPIView):
-
+class ShowTransaction(UserTransactionMixin, RetrieveAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
 
 
-class DeleteTransaction(DestroyAPIView):
-
+class UpdateTransaction(UserTransactionMixin, UpdateAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = TransactionSerializer
 
-    queryset = Transaction.objects.all()
+
+class DeleteTransaction(UserTransactionMixin, DestroyAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     serializer_class = TransactionSerializer
 
     def destroy(self, request, *args, **kwargs):
-
-        transaction = self.get_object()
-        transaction.delete()
-
-        return Response(
-            {'status': 'ok', 'message': 'Transaction was successfully deleted.'},
-            status=status.HTTP_204_NO_CONTENT)
+        self.get_object().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
 
 class TransactionListView(ListAPIView):

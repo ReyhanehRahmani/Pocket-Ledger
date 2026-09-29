@@ -53,6 +53,16 @@ class TransactionSerializer(serializers.ModelSerializer):
         if obj.category:
             return obj.category.title
         return None
+    
+    def validate_category(self, value):
+        if value and value.user != self.context['request'].user:
+            raise serializers.ValidationError("دسته‌بندی نامعتبر است.")
+        return value
+
+    def validate_card(self, value):
+        if value and value.user != self.context['request'].user:
+            raise serializers.ValidationError("کارت نامعتبر است.")
+        return value
 
 
 class TransactionReportQuerySerializer(serializers.Serializer):

@@ -30,6 +30,8 @@ urlpatterns = [
     #category & card
     path('categories/', CategoryListCreateView.as_view(), name='category-list-create'),
     path('cards/', CardListCreateView.as_view(), name='card-list-create'),
+    path('categories/<int:pk>/', CategoryDetailView.as_view(), name='category-detail'),
+    path('cards/<int:pk>/', CardDetailView.as_view(), name='card-detail'),
 
     #report
     path('report/', TransactionReportView.as_view(), name='transaction_report'),
