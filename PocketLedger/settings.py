@@ -15,6 +15,10 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -105,6 +109,7 @@ REST_FRAMEWORK = {
     
 }
 
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
@@ -171,7 +176,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'imreybyrey@gmail.com'  # ایمیل Gmail خودت رو بذار
-EMAIL_HOST_PASSWORD = 'cdyyfdebmdoserbh'  # App Password ۱۶ رقمی بدون فاصله
+EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']  # App Password ۱۶ رقمی بدون فاصله
 
 
 # ===== تنظیمات پیش‌فرض =====
