@@ -69,7 +69,15 @@ class ShowTransaction(UserTransactionMixin, RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TransactionSerializer
 
+class CreateTransaction(CreateAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = TransactionSerializer
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+        
 class UpdateTransaction(UserTransactionMixin, UpdateAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
