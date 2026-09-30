@@ -46,11 +46,15 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/transaction/', include('app_transaction.api.urls')),
     path('api/account/', include('app_account.api.urls')),
-    path('swagger.<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', TemplateView.as_view(template_name='index.html')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
 
+# مستندات API فقط در حالت توسعه (DEBUG) در دسترس است
+if settings.DEBUG:
+    urlpatterns += [
+        path('swagger.<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+        path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+        path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    ]

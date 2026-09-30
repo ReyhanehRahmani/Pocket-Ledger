@@ -24,15 +24,27 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-lrvjc707lryn-)o+-1m7(-il&2uh)=2vy1fxp06fn23wt3gpfh'
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get(
+    'ALLOWED_HOSTS', 'daftarchehman.ir,www.daftarchehman.ir'
+).split(',')
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://daftarchehman.ir',
+    'https://www.daftarchehman.ir',
+]
 
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Application definition
 
@@ -54,6 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -109,8 +122,6 @@ REST_FRAMEWORK = {
     
 }
 
-SECRET_KEY = os.environ['SECRET_KEY']
-
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
@@ -148,15 +159,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
 
 # ==========================================
 # تنظیمات ارسال ایمیل (Email Settings)
@@ -185,4 +191,3 @@ DEFAULT_FROM_EMAIL = 'imreybyrey@gmail.com'  # همون ایمیل Gmail خود�
 
 # ایمیل مدیر برای دریافت گزارشات (اختیاری)
 ADMIN_EMAIL = 'imreybyrey@gmail.com'
-
