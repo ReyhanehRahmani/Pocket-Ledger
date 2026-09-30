@@ -34,8 +34,7 @@ ALLOWED_HOSTS = os.environ.get(
 ).split(',')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://daftarchehman.ir',
-    'https://www.daftarchehman.ir',
+    'https://' + h.strip() for h in ALLOWED_HOSTS if h.strip()
 ]
 
 if DEBUG:
